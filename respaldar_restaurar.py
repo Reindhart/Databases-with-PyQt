@@ -10,8 +10,8 @@ import os, subprocess
 from datetime import datetime
 
 fecha = datetime.today().strftime('%d_%m_%Y-%H.%M')
-pathBase = "D:\\_App\\xampp\\mysql\\bin\\mysqldump.exe"
-pathBase2 = "D:\\_App\\xampp\\mysql\\bin\\mysql.exe"
+mysqldumpPath = "D:\\_App\\xampp\\mysql\\bin\\mysqldump.exe"
+mysqlPath = "D:\\_App\\xampp\\mysql\\bin\\mysql.exe"
 user="root"
 password=""
 
@@ -28,7 +28,7 @@ def backup_database(database_name, backup_path):
 
         # Comando mysqldump con usuario, contraseña y archivo de salida
         backup_command = [
-            pathBase,                   # Ruta al ejecutable mysqldump
+            mysqldumpPath,                   # Ruta al ejecutable mysqldump
             "--user=" + user,          # Usuario
             "--password=" + password,  # Contraseña
             "--databases",             # Indicar que se van a respaldar bases de datos
@@ -227,7 +227,7 @@ class Respaldar(QWidget):
             with open(backup_file_path, 'r') as backup_file:
                 # Comando para la restauración
                 restore_command = [
-                    pathBase2,  # Ruta a mysql.exe o mysqlimport.exe
+                    mysqlPath,  # Ruta a mysql.exe o mysqlimport.exe
                     f"--user={user}",
                     f"--password={password}",
                     selected_database

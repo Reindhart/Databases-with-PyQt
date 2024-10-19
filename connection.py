@@ -60,17 +60,75 @@ def get_databases_with_tables():
             cursor.close()
             connection.close()
 
-def connect_to_database(dabase_name):
-    print("hola")
+def connect_to_database(db_name=None):
+    """Conecta a MySQL y selecciona la base de datos especificada."""
+    try:
+        # Parámetros de conexión
+        connection = create_connection()
+        if connection.is_connected() and db_name:
+            cursor = connection.cursor()
+            cursor.execute(f"USE `{db_name}`;")  # Seleccionar la base de datos
+            cursor.close()
+        return connection
+    except mysql.connector.Error as e:
+        print(f"Error al conectar a la base de datos: {e}")
+        return None
 
-def get_tables(database_name):
-    """Obtiene las tablas de la base de datos especificada."""
-    # Conectar a la base de datos y ejecutar la consulta
-    connection = connect_to_database(database_name)  # Implementa tu lógica de conexión
+def get_tables(connection):
+    """Obtiene las tablas de la base de datos especificada usando la conexión."""
     cursor = connection.cursor()
     cursor.execute("SHOW TABLES;")  # Comando para MySQL
-
     tables = [table[0] for table in cursor.fetchall()]  # Obtener nombres de las tablas
-    cursor.close()
-    connection.close()
     return tables
+
+def get_attributes(connection, table_name):
+    cursor = connection.cursor()
+    cursor.execute(f"SHOW COLUMNS FROM {table_name};")
+    attributes = []
+    
+    for column in cursor.fetchall():
+        name = column[0]
+        col_type = column[1]  # Tipo de dato (VARCHAR, INT, etc.)
+        key = column[3]       # Aquí se encuentra si es PK o FK (PRI, MUL)
+        
+        # Revisar longitud si aplica
+        length = ""
+        if "(" in col_type:
+            length = col_type[col_type.index("(") + 1:col_type.index(")")] # Extraer longitud
+            col_type = col_type.split("(")[0]  # Eliminar longitud del tipo
+
+        # Revisar si es auto_increment
+        auto_increment = "Auto Increment" if "auto_increment" in column[5] else ""
+
+        # Revisar valor por defecto
+        default_value = f"Default: {column[4]}" if column[4] is not None else ""
+
+        # Construir los extras
+        extras = []
+        if auto_increment:
+            extras.append(auto_increment)
+        if length:
+            extras.append(f"Length: {length}")
+        if default_value:
+            extras.append(default_value)
+        
+        extras_str = ", ".join(extras)
+
+        # Verificar si es clave primaria o foránea
+        if key == "PRI":
+            key_type = "PK"  # Clave primaria
+        elif key == "MUL":
+            key_type = "FK"  # Clave foránea
+        else:
+            key_type = "Regular"  # Ni PK ni FK
+
+        attributes.append({
+            "name": name,          # Nombre del atributo
+            "key_type": key_type,  # Aquí asignamos correctamente la clave key_type
+            "col_type": col_type,  # Tipo de dato
+            "extras": extras_str   # Información adicional como longitud o auto_increment
+        })
+
+    cursor.close()
+    return attributes
+

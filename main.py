@@ -77,10 +77,10 @@ class MainWindow(QMainWindow):
 
         # Crear el ícono dependiendo del tema
         if is_dark_theme:
-            icon = QIcon(icon_path)  # Cambiar color a blanco si es tema oscuro
+            icon = QIcon("reload-dark.svg")  # Cambiar color a blanco si es tema oscuro
             self.reload_action.setIcon(icon)
         else:
-            icon = QIcon(icon_path)  # Cambiar color a negro si es tema claro
+            icon = QIcon("reload-light.svg")  # Cambiar color a negro si es tema claro
             self.reload_action.setIcon(icon)
 
     def show_create_delete_tab(self):
