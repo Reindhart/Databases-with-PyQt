@@ -10,8 +10,8 @@ import os, subprocess
 from datetime import datetime
 
 fecha = datetime.today().strftime('%d_%m_%Y-%H.%M')
-pathBase = "C:\\_App\\xampp\\mysql\\bin\\mysqldump.exe"
-pathBase2 = "C:\\_App\\xampp\\mysql\\bin\\mysql.exe"
+pathBase = "D:\\_App\\xampp\\mysql\\bin\\mysqldump.exe"
+pathBase2 = "D:\\_App\\xampp\\mysql\\bin\\mysql.exe"
 user="root"
 password=""
 

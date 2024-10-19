@@ -59,3 +59,18 @@ def get_databases_with_tables():
         if connection.is_connected():
             cursor.close()
             connection.close()
+
+def connect_to_database(dabase_name):
+    print("hola")
+
+def get_tables(database_name):
+    """Obtiene las tablas de la base de datos especificada."""
+    # Conectar a la base de datos y ejecutar la consulta
+    connection = connect_to_database(database_name)  # Implementa tu lógica de conexión
+    cursor = connection.cursor()
+    cursor.execute("SHOW TABLES;")  # Comando para MySQL
+
+    tables = [table[0] for table in cursor.fetchall()]  # Obtener nombres de las tablas
+    cursor.close()
+    connection.close()
+    return tables

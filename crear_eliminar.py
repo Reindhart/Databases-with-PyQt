@@ -39,7 +39,7 @@ class DynamicTextInput(QWidget):
         self.table_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.table_widget.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.table_widget.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
-        self.table_widget.setColumnWidth(1, 30)
+        self.table_widget.setColumnWidth(1, 10)
 
         self.table_widget_layout.addWidget(self.table_widget)
         self.table_widget_container.setLayout(self.table_widget_layout)

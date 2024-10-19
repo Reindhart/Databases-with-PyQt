@@ -1,8 +1,10 @@
-from PyQt6.QtWidgets import QApplication, QMainWindow, QMenuBar
-from PyQt6.QtGui import QAction, QIcon
+from PyQt6.QtWidgets import QApplication, QMainWindow, QMenuBar, QFrame, QVBoxLayout, QWidget
+from PyQt6.QtGui import QAction, QIcon, QColor
 import sys
+from PyQt6.QtCore import Qt
 from crear_eliminar import DynamicTextInput
 from respaldar_restaurar import Respaldar
+from tablas import Tablas  # Importar el archivo tablas.py
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -12,7 +14,7 @@ class MainWindow(QMainWindow):
         self.setGeometry(100, 100, 800, 600)
 
         # Establecer el icono de la ventana
-        self.setWindowIcon(QIcon("favicon.ico"))  # Asegúrate de que el archivo esté en el mismo directorio
+        self.setWindowIcon(QIcon("favicon.ico"))
 
         # Crear el menú
         self.menu_bar = QMenuBar(self)
@@ -25,40 +27,86 @@ class MainWindow(QMainWindow):
         self.backup_restore_action = QAction("Respaldar/Restaurar", self)
         self.backup_restore_action.triggered.connect(self.show_backup_restore_tab)
 
-        self.reload_action = QAction("Recargar", self)
+        self.tablas_action = QAction("Tablas", self)
+        self.tablas_action.triggered.connect(self.show_tablas_tab)  # Conectar a la nueva función
+
+        # Crear la acción de Recargar con un ícono en lugar de texto
+        self.reload_action = QAction(self)
         self.reload_action.triggered.connect(self.reload_databases)
+        self.set_reload_icon()  # Establecer el ícono dinámico
 
         # Agregar acciones al menú
         self.menu_bar.addAction(self.create_delete_action)
         self.menu_bar.addAction(self.backup_restore_action)
-        self.menu_bar.addAction(self.reload_action)
+        self.menu_bar.addAction(self.tablas_action)
+        self.menu_bar.addAction(self.reload_action)  # Acción solo con el ícono
+
+        # Crear un widget contenedor para el layout
+        self.container_widget = QWidget()
+        self.setCentralWidget(self.container_widget)
+
+        # Crear un layout vertical para contener la línea y el contenido
+        self.layout = QVBoxLayout()
+
+        # Crear una línea horizontal
+        self.line = QFrame()
+        self.line.setFrameShape(QFrame.Shape.HLine)
+        self.line.setFrameShadow(QFrame.Shadow.Sunken)
+
+        # Agregar la línea al layout
+        self.layout.addWidget(self.line)
 
         # Inicializar las pestañas
         self.current_widget = None
         self.show_create_delete_tab()  # Mostrar la pestaña de Crear/Eliminar al inicio
 
-        self.center()  # Llamar a la función para centrar la ventana
+        # Establecer el layout en el widget contenedor
+        self.container_widget.setLayout(self.layout)
+
+        # Centrar ventana
+        self.center()
+
+    def set_reload_icon(self):
+        # Detectar si el fondo es oscuro o claro
+        palette = self.palette()
+        background_color = palette.color(palette.ColorRole.Window)
+        is_dark_theme = background_color.value() < 128  # Valor bajo = oscuro
+
+        # Cargar el archivo SVG
+        icon_path = "reload.svg"
+
+        # Crear el ícono dependiendo del tema
+        if is_dark_theme:
+            icon = QIcon(icon_path)  # Cambiar color a blanco si es tema oscuro
+            self.reload_action.setIcon(icon)
+        else:
+            icon = QIcon(icon_path)  # Cambiar color a negro si es tema claro
+            self.reload_action.setIcon(icon)
 
     def show_create_delete_tab(self):
         if self.current_widget is not None:
             self.current_widget.deleteLater()  # Eliminar el widget actual
 
         self.current_widget = DynamicTextInput()  # Crear nueva instancia
-        self.setCentralWidget(self.current_widget)  # Establecer como widget central
+        self.layout.addWidget(self.current_widget)  # Agregar al layout debajo de la línea
 
     def show_backup_restore_tab(self):
         if self.current_widget is not None:
             self.current_widget.deleteLater()  # Eliminar el widget actual
 
         self.current_widget = Respaldar()  # Crear nueva instancia
-        self.setCentralWidget(self.current_widget)  # Establecer como widget central
-        self.reload_databases()  # Cargar bases de datos al mostrar la pestaña
+        self.layout.addWidget(self.current_widget)  # Agregar al layout debajo de la línea
+
+    def show_tablas_tab(self):
+        if self.current_widget is not None:
+            self.current_widget.deleteLater()  # Eliminar el widget actual
+
+        self.current_widget = Tablas()  # Crear nueva instancia desde tablas.py
+        self.layout.addWidget(self.current_widget)  # Agregar al layout debajo de la línea
 
     def reload_databases(self):
         if self.current_widget is not None:
             self.current_widget.load_databases()  # Recargar las bases de datos en el widget actual
-            if isinstance(self.current_widget, Respaldar):
-                self.current_widget.load_backup_files()  # Cargar archivos de respaldo si estamos en la pestaña de Respaldar
 
     def center(self):
         screen_geometry = self.screen().availableGeometry()
