@@ -303,7 +303,8 @@ class CrearTablaFormulario(QDialog):
 
             # Validar nombre del atributo
             if not nombre.isidentifier() or nombre.upper() in sql_reserved_keywords:
-                return f"Error: El nombre del atributo '{nombre}' no es válido o es una palabra reservada de SQL."
+                QMessageBox.warning(self, "Error", f"Error: El nombre del atributo '{nombre}' no es válido o es una palabra reservada de SQL.")
+                return
 
             # Generar la definición del atributo
             columna_sql = f"`{nombre}` {tipo}"
@@ -325,27 +326,30 @@ class CrearTablaFormulario(QDialog):
 
 #---------------------------------------------------------
 
-            # PREDETERMINADO
+            # PREDETERMINADO Y NULO
+
+            # Añadir restricción de NULL primero
+            columna_sql += " NOT NULL" if not nulo else " NULL"
 
             # Validar la columna que usa CURRENT_TIMESTAMP
             if predeterminado == "CURRENT_TIMESTAMP" and tipo.upper() not in tipos_timestamp:
                 return f"Error: El tipo de dato '{tipo}' no soporta CURRENT_TIMESTAMP en el atributo '{nombre}'."
-            
-            # Añadir valor predeterminado
-            if predeterminado:
-                columna_sql += f" DEFAULT {predeterminado}" if predeterminado != "NULL" else " DEFAULT NULL"
-            
-            if predeterminado != "NULL" and nulo:
+
+            # Validar valor predeterminado si no permite NULL
+            if predeterminado and not nulo:
+                if tipo.upper() in ["INT", "BIGINT", "FLOAT", "DOUBLE"] and not predeterminado.isdigit():
+                    return f"Error: El valor predeterminado para el atributo '{nombre}' debe ser un número válido."
+                if tipo.upper() in ["VARCHAR", "CHAR"] and predeterminado and not (predeterminado.startswith("'") and predeterminado.endswith("'")):
+                    return f"Error: El valor predeterminado para el atributo '{nombre}' debe estar entre comillas para los tipos de cadena."
+                
+                # Añadir valor predeterminado
+                if predeterminado != "NULL":
+                    columna_sql += f" DEFAULT {predeterminado}"
+
+            # Validar si permite NULL y se quiere añadir un predeterminado
+            if nulo and predeterminado != "NULL":
                 return f"Error: El atributo '{nombre}' no puede tener un valor predeterminado si permite NULL."
-            
-            if tipo.upper() in ["INT", "BIGINT", "FLOAT", "DOUBLE"] and not predeterminado.isdigit():
-                return f"Error: El valor predeterminado para el atributo '{nombre}' debe ser un número válido."
-            if tipo.upper() in ["VARCHAR", "CHAR"] and predeterminado and not (predeterminado.startswith("'") and predeterminado.endswith("'")):
-                return f"Error: El valor predeterminado para el atributo '{nombre}' debe estar entre comillas para los tipos de cadena."
 
-
-            # Añadir restricción de NULL
-            columna_sql += " NOT NULL" if not nulo else " NULL"
             
 #---------------------------------------------------------
 
