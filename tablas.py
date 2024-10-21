@@ -1,10 +1,12 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QScrollArea, QTreeWidget, QTreeWidgetItem, QPushButton
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QScrollArea, QTreeWidget, QTreeWidgetItem, QPushButton, QMessageBox
 from PyQt6.QtGui import QColor
 from connection import get_tables, connect_to_database, get_databases, get_attributes
+from tablas_crear import CrearTablaFormulario
 
 class Tablas(QWidget):
     def __init__(self):
         super().__init__()
+        self.selected_db = None
 
         # Crear el layout principal horizontal
         main_layout = QHBoxLayout(self)
@@ -32,6 +34,9 @@ class Tablas(QWidget):
         self.tables_tree = QTreeWidget()
         # Ajuste de los encabezados para múltiples columnas
         self.tables_tree.setHeaderLabels(["Tabla", "Llave", "Tipo", "Extras"])
+
+        # Cambiar el color de fondo a blanco
+        self.tables_tree.setStyleSheet("QTreeWidget { background-color: #f3f3f3; } QHeaderView { background-color: #f3f3f3; color: #000 }")
 
         right_scroll = QScrollArea()
         right_scroll.setWidgetResizable(True)
@@ -68,8 +73,8 @@ class Tablas(QWidget):
 
     def on_database_selected(self, item):
         """Manejador para cuando se selecciona una base de datos."""
-        selected_db = item.text()
-        self.load_tables(selected_db)  # Cargar tablas de la base de datos seleccionada
+        self.selected_db = item.text()  # Guarda la base de datos seleccionada
+        self.load_tables(self.selected_db)  # Cargar tablas de la base de datos seleccionada
 
     def load_databases(self):
         databases = get_databases()  # Obtener bases de datos
@@ -155,13 +160,26 @@ class Tablas(QWidget):
         """Ajusta el tamaño máximo del QListWidget cuando la ventana se redimensiona."""
         super().resizeEvent(event)
         self.adjust_scroll_size()  # Ajustar tamaño de la lista y scroll cuando la ventana cambia de tamaño
-
+                
     # Placeholder para los métodos de los botones
     def add_table(self):
-        pass
+        if not self.selected_db:  # Verifica si hay una base de datos seleccionada
+            QMessageBox.warning(self, "Error", "Debe seleccionar una base de datos.")
+            return
+        
+        dialog = CrearTablaFormulario(self.selected_db)  # Pasa la instancia del padre (Tablas)
+        if dialog.exec():
+            # Recargar las tablas después de crear una nueva
+            self.load_tables(self.selected_db)
 
     def delete_table(self):
-        pass
+        if not self.selected_db:  # Verifica si hay una base de datos seleccionada
+            QMessageBox.warning(self, "Error", "Debe seleccionar una base de datos.")
+            return
 
     def modify_table(self):
-        pass
+        if not self.selected_db:  # Verifica si hay una base de datos seleccionada
+            QMessageBox.warning(self, "Error", "Debe seleccionar una base de datos.")
+            return
+
+    
