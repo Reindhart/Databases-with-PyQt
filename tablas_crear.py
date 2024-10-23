@@ -37,6 +37,8 @@ class CrearTablaFormulario(QDialog):
         self.table_widget.setColumnCount(7)  # Número de columnas (atributos)
         self.table_widget.setHorizontalHeaderLabels(["Nombre", "Tipo", "Longitud", "Predeterminado", "Nulo", "A.I", "Llave"])
         layout_principal.addWidget(self.table_widget)
+        
+        
 
         # Botón para crear la tabla
         self.crear_tabla_btn = QPushButton("Crear Tabla")
@@ -49,6 +51,121 @@ class CrearTablaFormulario(QDialog):
         
         # Inicializar atributos
         self.update_atributos()
+        
+    from PyQt6.QtWidgets import (QDialog, QLabel, QLineEdit, QSpinBox, QComboBox, QCheckBox, 
+                             QPushButton, QVBoxLayout, QTableWidget, QMessageBox, 
+                             QHBoxLayout, QHeaderView, QWidget)
+from PyQt6.QtCore import Qt
+
+class CrearTablaFormulario(QDialog):
+    def __init__(self, selected_db):
+        super().__init__()
+        self.setWindowTitle("Crear Tabla")
+
+        self.selected_db = selected_db  # Guardar la base de datos seleccionada
+        self.setGeometry(100, 100, 850, 300)
+
+        layout_principal = QVBoxLayout(self)
+
+        # Layout horizontal para nombre de la tabla y número de atributos
+        top_layout = QHBoxLayout()
+
+        # Campo para el nombre de la tabla
+        self.nombre_tabla_input = QLineEdit()
+        top_layout.addWidget(QLabel("Nombre de la tabla:"))
+        top_layout.addWidget(self.nombre_tabla_input)
+
+        # SpinBox para el número de atributos
+        self.num_atributos_spinbox = QSpinBox()
+        self.num_atributos_spinbox.setMinimum(1)
+        self.num_atributos_spinbox.valueChanged.connect(self.update_atributos)
+        top_layout.addWidget(QLabel("No. Atributos:"))
+        top_layout.addWidget(self.num_atributos_spinbox)
+
+        # Añadir el layout horizontal al layout principal
+        layout_principal.addLayout(top_layout)
+
+        # Tabla para atributos
+        self.table_widget = QTableWidget(self)
+        self.table_widget.setColumnCount(7)  # Número de columnas (atributos)
+        self.table_widget.setHorizontalHeaderLabels(["Nombre", "Tipo", "Longitud", "Predeterminado", "Nulo", "A.I", "Llave"])
+        layout_principal.addWidget(self.table_widget)
+
+        # Botón para crear la tabla
+        self.crear_tabla_btn = QPushButton("Crear Tabla")
+        layout_principal.addWidget(self.crear_tabla_btn)
+
+        self.setLayout(layout_principal)
+        self.center()
+
+        # Inicializar atributos
+        self.update_atributos()
+
+    def update_atributos(self):
+        """Actualiza la tabla según el número seleccionado en el SpinBox."""
+        num_atributos_nuevo = self.num_atributos_spinbox.value()
+        self.table_widget.setRowCount(num_atributos_nuevo)
+
+        self.table_widget.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+
+        for row in range(num_atributos_nuevo):
+            if not self.table_widget.cellWidget(row, 0):
+                # Nombre
+                nombre_widget = QLineEdit()
+                self.table_widget.setCellWidget(row, 0, nombre_widget)
+
+                # Tipo con categorías
+                tipo_widget = self.create_categorized_combobox()
+                self.table_widget.setCellWidget(row, 1, tipo_widget)
+
+                # Longitud
+                longitud_widget = QLineEdit()
+                self.table_widget.setCellWidget(row, 2, longitud_widget)
+
+                # Predeterminado
+                predeterminado_widget = QComboBox()
+                predeterminado_widget.addItems(["Ninguno", "NULL", "CURRENT_TIMESTAMP"])
+                self.table_widget.setCellWidget(row, 3, predeterminado_widget)
+
+                # Nulo
+                nulo_widget = QCheckBox()
+                nulo_widget.stateChanged.connect(self.checkbox_state_changed(row, 4, nulo_widget.checkState()))
+                nulo_container = QWidget()
+                nulo_layout = QHBoxLayout(nulo_container)
+                nulo_layout.addWidget(nulo_widget)
+                nulo_layout.setAlignment(nulo_widget, Qt.AlignmentFlag.AlignCenter)
+                nulo_layout.setContentsMargins(0, 0, 0, 0)
+                self.table_widget.setCellWidget(row, 4, nulo_container)
+
+                # Autoincremento
+                autoincremento_widget = QCheckBox()
+                autoincremento_widget.stateChanged.connect(self.checkbox_state_changed(row, 5, autoincremento_widget.checkState()))
+                autoincremento_container = QWidget()
+                autoincremento_layout = QHBoxLayout(autoincremento_container)
+                autoincremento_layout.addWidget(autoincremento_widget)
+                autoincremento_layout.setAlignment(autoincremento_widget, Qt.AlignmentFlag.AlignCenter)
+                autoincremento_layout.setContentsMargins(0, 0, 0, 0)
+                self.table_widget.setCellWidget(row, 5, autoincremento_container)
+
+                # Llave
+                llave_widget = QComboBox()
+                llave_widget.addItems(["", "PRIMARY", "UNIQUE", "INDEX", "FULLTEXT", "SPATIAL"])
+                self.table_widget.setCellWidget(row, 6, llave_widget)
+
+    def checkbox_state_changed(self, row, col, state):                
+        estado = "Activado" if state == Qt.CheckState.Checked else "Desactivado"
+        print(f"Checkbox en fila {row}, columna {col}: {estado}")
+    
+    def sync_null_with_predeterminado(self, predeterminado_widget, nulo_widget):
+        """Sincroniza el checkbox de 'Nulo' con la opción 'NULL' en el campo 'Predeterminado'."""
+        if predeterminado_widget.currentText() == "NULL":
+            nulo_widget.setChecked(True)
+
+    def sync_predeterminado_with_null(self, predeterminado_widget, nulo_widget):
+        """Sincroniza el valor del campo 'Predeterminado' cuando se desactiva 'Nulo'."""
+        if not nulo_widget.isChecked() and predeterminado_widget.currentText() == "NULL":
+            predeterminado_widget.setCurrentText("Ninguno")
+
         
     def save_current_data(self):
         """Guarda temporalmente los datos ingresados en la tabla."""
@@ -169,60 +286,6 @@ class CrearTablaFormulario(QDialog):
 
         return combo
 
-    def update_atributos(self):
-        """Actualiza la tabla según el número seleccionado en el SpinBox."""
-        datos_actuales = self.save_current_data()
-        num_atributos_nuevo = self.num_atributos_spinbox.value()
-        self.table_widget.setRowCount(num_atributos_nuevo)
-        
-        self.table_widget.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        self.table_widget.setColumnWidth(4, 10)
-        self.table_widget.setColumnWidth(5, 10)
-
-        for row in range(num_atributos_nuevo):
-            if not self.table_widget.cellWidget(row, 0):
-                # Nombre
-                nombre_widget = QLineEdit()
-                self.table_widget.setCellWidget(row, 0, nombre_widget)
-
-                # Tipo con categorías
-                tipo_widget = self.create_categorized_combobox()
-                self.table_widget.setCellWidget(row, 1, tipo_widget)
-
-                # Longitud
-                longitud_widget = QLineEdit()
-                self.table_widget.setCellWidget(row, 2, longitud_widget)
-
-                # Predeterminado
-                predeterminado_widget = QComboBox()
-                predeterminado_widget.addItems(["", "NULL", "CURRENT_TIMESTAMP"])
-                self.table_widget.setCellWidget(row, 3, predeterminado_widget)
-
-                # Nulo
-                nulo_widget = QCheckBox()
-                nulo_container = QWidget()
-                nulo_layout = QHBoxLayout(nulo_container)
-                nulo_layout.addWidget(nulo_widget)
-                nulo_layout.setAlignment(nulo_widget, Qt.AlignmentFlag.AlignCenter)
-                nulo_layout.setContentsMargins(0, 0, 0, 0)
-                self.table_widget.setCellWidget(row, 4, nulo_container)
-
-                # Autoincremento
-                autoincremento_widget = QCheckBox()
-                autoincremento_container = QWidget()
-                autoincremento_layout = QHBoxLayout(autoincremento_container)
-                autoincremento_layout.addWidget(autoincremento_widget)
-                autoincremento_layout.setAlignment(autoincremento_widget, Qt.AlignmentFlag.AlignCenter)
-                autoincremento_layout.setContentsMargins(0, 0, 0, 0)
-                self.table_widget.setCellWidget(row, 5, autoincremento_container)
-
-                # Llave
-                llave_widget = QComboBox()
-                llave_widget.addItems(["", "PRIMARY", "UNIQUE", "INDEX", "FULLTEXT", "SPATIAL"])
-                self.table_widget.setCellWidget(row, 6, llave_widget)
-
-            self.restore_data(datos_actuales)
-
     def center(self):
         screen_geometry = self.screen().availableGeometry()
         window_geometry = self.frameGeometry()
@@ -248,14 +311,14 @@ class CrearTablaFormulario(QDialog):
             longitud = self.table_widget.cellWidget(i, 2).text().strip()
             predeterminado = self.table_widget.cellWidget(i, 3).currentText()
             nulo_widget = self.table_widget.cellWidget(i, 4).layout().itemAt(0).widget()
-            nulo = not nulo_widget.isChecked()  # Si está marcado, es "NOT NULL"
+            nulo = "NULL" if nulo_widget.isChecked() else "NOT NULL"
             autoincremento_widget = self.table_widget.cellWidget(i, 5).layout().itemAt(0).widget()
-            autoincremento = autoincremento_widget.isChecked()
+            autoincremento = "AUTO_INCREMENT" if autoincremento_widget.isChecked() else ""
             llave = self.table_widget.cellWidget(i, 6).currentText()
 
             # Sí no tiene nombre no se toma en cuenta
             if not nombre:
-                pass
+                continue
             
             atributo = [nombre, tipo, longitud, predeterminado, nulo, autoincremento, llave]
             lista_atributos.append(atributo)
@@ -345,10 +408,6 @@ class CrearTablaFormulario(QDialog):
                 # Añadir valor predeterminado
                 if predeterminado != "NULL":
                     columna_sql += f" DEFAULT {predeterminado}"
-
-            # Validar si permite NULL y se quiere añadir un predeterminado
-            if nulo and predeterminado != "NULL":
-                return f"Error: El atributo '{nombre}' no puede tener un valor predeterminado si permite NULL."
 
             
 #---------------------------------------------------------
