@@ -93,6 +93,7 @@ class CrearTablaFormulario(QDialog):
 
         # Botón para crear la tabla
         self.crear_tabla_btn = QPushButton("Crear Tabla")
+        self.crear_tabla_btn.clicked.connect(self.crear_tabla)
         layout_principal.addWidget(self.crear_tabla_btn)
 
         self.setLayout(layout_principal)
@@ -129,7 +130,8 @@ class CrearTablaFormulario(QDialog):
 
                 # Nulo
                 nulo_widget = QCheckBox()
-                nulo_widget.stateChanged.connect(self.checkbox_state_changed(row, 4, nulo_widget.checkState()))
+                predeterminado_widget.currentIndexChanged.connect(lambda idx, pw=predeterminado_widget, nw=nulo_widget: self.sync_null_with_predeterminado(pw, nw))
+                nulo_widget.stateChanged.connect(lambda state, pw=predeterminado_widget, nw=nulo_widget: self.sync_predeterminado_with_null(pw, nw))
                 nulo_container = QWidget()
                 nulo_layout = QHBoxLayout(nulo_container)
                 nulo_layout.addWidget(nulo_widget)
@@ -139,7 +141,7 @@ class CrearTablaFormulario(QDialog):
 
                 # Autoincremento
                 autoincremento_widget = QCheckBox()
-                autoincremento_widget.stateChanged.connect(self.checkbox_state_changed(row, 5, autoincremento_widget.checkState()))
+                #autoincremento_widget.stateChanged.connect(lambda state, ai=autoincremento_widget, key=llave_widget: self.sync_autoincrement_with_key(ai, key))
                 autoincremento_container = QWidget()
                 autoincremento_layout = QHBoxLayout(autoincremento_container)
                 autoincremento_layout.addWidget(autoincremento_widget)
@@ -152,10 +154,6 @@ class CrearTablaFormulario(QDialog):
                 llave_widget.addItems(["", "PRIMARY", "UNIQUE", "INDEX", "FULLTEXT", "SPATIAL"])
                 self.table_widget.setCellWidget(row, 6, llave_widget)
 
-    def checkbox_state_changed(self, row, col, state):                
-        estado = "Activado" if state == Qt.CheckState.Checked else "Desactivado"
-        print(f"Checkbox en fila {row}, columna {col}: {estado}")
-    
     def sync_null_with_predeterminado(self, predeterminado_widget, nulo_widget):
         """Sincroniza el checkbox de 'Nulo' con la opción 'NULL' en el campo 'Predeterminado'."""
         if predeterminado_widget.currentText() == "NULL":
@@ -165,6 +163,11 @@ class CrearTablaFormulario(QDialog):
         """Sincroniza el valor del campo 'Predeterminado' cuando se desactiva 'Nulo'."""
         if not nulo_widget.isChecked() and predeterminado_widget.currentText() == "NULL":
             predeterminado_widget.setCurrentText("Ninguno")
+            
+    def sync_autoincrement_with_key(self, autoincremento_widget, llave_widget):
+        """Sincroniza el valor del campo 'Llave' cuando se activa 'Autoincremento'."""
+        if llave_widget.currentText() == "" and autoincremento_widget.isChecked():
+            llave_widget.setCurrentText("PRIMARY")
 
         
     def save_current_data(self):
@@ -270,10 +273,7 @@ class CrearTablaFormulario(QDialog):
         category_json = QStandardItem("--JSON--")
         category_json.setFlags(Qt.ItemFlag.NoItemFlags)  # No seleccionable
         model.appendRow(category_json)
-
-        for data_type in ["JSON"]:
-            item = QStandardItem(data_type)
-            model.appendRow(item)
+        model.appendRow(QStandardItem("JSON"))
 
         combo.setModel(model)
 
@@ -327,23 +327,14 @@ class CrearTablaFormulario(QDialog):
 
         self.accept()  # Cierra el diálogo si todo está correcto
 
-    def generar_sql(self, nombre_tabla, atributos):
-        """
-        Genera una sentencia SQL para crear una tabla, con validaciones.
-        
-        :param nombre_tabla: Nombre de la tabla a crear.
-        :param atributos: Lista de listas con la información de los atributos.
-                        Cada atributo debe tener los siguientes valores en orden: 
-                        nombre, tipo, longitud, predeterminado, nulo, autoincremento, llave.
-        :return: La sentencia SQL generada o un mensaje de error.
-        """
+    def generar_sql(self, nombre_tabla, lista_atributos):
+        """Genera una sentencia SQL para crear una tabla, con validaciones."""
         # Validar el nombre de la tabla
         if not nombre_tabla.isidentifier():
             return f"Error: El nombre de la tabla '{nombre_tabla}' no es válido."
 
         # Lista para almacenar las partes del SQL
         columnas_sql = []
-        primary_keys = []
 
         # Diccionario para manejar tipos que soportan CURRENT_TIMESTAMP
         tipos_timestamp = {"TIMESTAMP", "DATETIME"}
@@ -351,7 +342,7 @@ class CrearTablaFormulario(QDialog):
 
 
         # Recorrer los atributos y generar las columnas
-        for atributo in atributos:
+        for atributo in lista_atributos:
             nombre = atributo[0]
             tipo = atributo[1]
             longitud = atributo[2]
@@ -376,23 +367,22 @@ class CrearTablaFormulario(QDialog):
 
             # LONGITUD
 
-            if tipo.upper() in ["VARCHAR", "CHAR"] and not longitud.isdigit():
-                return f"Error: El atributo '{nombre}' requiere una longitud válida."
-            if tipo.upper() in ["VARCHAR", "CHAR"] and int(longitud) <= 0:
-                return f"Error: La longitud del atributo '{nombre}' debe ser mayor que 0."
+            if tipo.upper() == "VARCHAR" and longitud == "":
+                return f"Error: El atributo {nombre} requiere una longitud"
 
-            if tipo.upper() in ["INT", "BIGINT", "TINYINT", "FLOAT", "DOUBLE"] and longitud:
-                return f"Error: El tipo de dato '{tipo}' no debe tener longitud en el atributo '{nombre}'."
-            
-            columna_sql += f"({longitud})"
+            if not longitud == "":
+                if not longitud.isdigit():
+                    return f"Error: El atributo '{nombre}' requiere una longitud válida. (Solo números)"
+                if int(longitud) <= 0 or int(longitud) >255:
+                    return f"Error: La longitud del atributo '{nombre}' debe ser mayor que 0 y menor que 255."            
+                columna_sql += f"({longitud})"
             
 
 #---------------------------------------------------------
 
             # PREDETERMINADO Y NULO
-
-            # Añadir restricción de NULL primero
-            columna_sql += " NOT NULL" if not nulo else " NULL"
+            
+            columna_sql += f" {nulo}"
 
             # Validar la columna que usa CURRENT_TIMESTAMP
             if predeterminado == "CURRENT_TIMESTAMP" and tipo.upper() not in tipos_timestamp:
@@ -408,6 +398,9 @@ class CrearTablaFormulario(QDialog):
                 # Añadir valor predeterminado
                 if predeterminado != "NULL":
                     columna_sql += f" DEFAULT {predeterminado}"
+            
+            elif predeterminado != "Ninguno":
+                columna_sql += f" DEFAULT {predeterminado}"
 
             
 #---------------------------------------------------------
@@ -425,21 +418,19 @@ class CrearTablaFormulario(QDialog):
 
             # LLAVES
 
-            if llave == "PRIMARY":
-                primary_keys.append(f"`{nombre}`")
-
-            # Verificar si hay llaves primarias
-            if primary_keys:
-                primary_key_sql = f"PRIMARY KEY ({', '.join([f'`{pk}`' for pk in primary_keys])})"
-                columnas_sql.append(primary_key_sql)
-                pass
-
-            # Agregar columna SQL a la lista
-            columnas_sql.append(columna_sql)
+            if llave != "":               
+                key_sql = f", {llave} (`{nombre}`)"
+                columna_sql += (key_sql)
+                
 
 #---------------------------------------------------------
 
+            # AGREGAR ATRIBUTO A LISTA DE ATRIBUTOS
+
+            columnas_sql.append(columna_sql)
+
+
         # Generar la sentencia completa
-        sql = f"CREATE TABLE `{nombre_tabla}` (\n    " + ",\n    ".join(columnas_sql) + "\n);"
+        sql = f"CREATE TABLE `{self.selected_db}`.`{nombre_tabla}` (\n    " + ",\n    ".join(columnas_sql) + "\n);"
         
         return sql
