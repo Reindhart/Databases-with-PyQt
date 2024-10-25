@@ -132,3 +132,34 @@ def get_attributes(connection, table_name):
     cursor.close()
     return attributes
 
+def create_table(db_name, sql):    
+    
+    no_error = False
+    
+    try:
+        connection = connect_to_database(db_name)        
+        cursor = connection.cursor()        
+        cursor.execute(f"{sql}")
+        connection.commit()
+        cursor.close()
+        connection.close()
+        no_error = True
+    except mysql.connector.Error as e:
+        print(f"Error al crear la tabla: {e}")
+        
+    return
+
+def delete_table(db_name, table_name):
+    
+    try:
+        connection = connect_to_database(db_name)        
+        cursor = connection.cursor()        
+        cursor.execute(f"DROP TABLE {table_name}")
+        connection.commit()
+        cursor.close()
+        connection.close()
+        no_error = True
+    except mysql.connector.Error as e:
+        print(f"Error al eliminar la tabla {table_name}: {e}")
+        
+    return

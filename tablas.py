@@ -7,6 +7,7 @@ class Tablas(QWidget):
     def __init__(self):
         super().__init__()
         self.selected_db = None
+        self.selected_table = None
 
         # Crear el layout principal horizontal
         main_layout = QHBoxLayout(self)
@@ -32,8 +33,12 @@ class Tablas(QWidget):
 
         # Layout derecho para las tablas
         self.tables_tree = QTreeWidget()
+        
         # Ajuste de los encabezados para múltiples columnas
         self.tables_tree.setHeaderLabels(["Tabla", "Llave", "Tipo", "Extras"])
+        
+         # Conectar el evento de selección de tabla
+        self.tables_tree.itemClicked.connect(self.on_table_selected)
 
         # Cambiar el color de fondo a blanco
         self.tables_tree.setStyleSheet("QTreeWidget { background-color: #f3f3f3; } QHeaderView { background-color: #f3f3f3; color: #000 }")
@@ -75,7 +80,12 @@ class Tablas(QWidget):
         """Manejador para cuando se selecciona una base de datos."""
         self.selected_db = item.text()  # Guarda la base de datos seleccionada
         self.load_tables(self.selected_db)  # Cargar tablas de la base de datos seleccionada
-
+        
+    def on_table_selected(self, item):
+        """Manejador para cuando se selecciona una tabla."""
+        self.selected_table = item.text(0)
+        print(f"Tabla seleccionada: {self.selected_table}")
+    
     def load_databases(self):
         databases = get_databases()  # Obtener bases de datos
         self.database_list.clear()  # Limpiar la lista existente
@@ -176,6 +186,21 @@ class Tablas(QWidget):
         if not self.selected_db:  # Verifica si hay una base de datos seleccionada
             QMessageBox.warning(self, "Error", "Debe seleccionar una base de datos.")
             return
+        if not self.selected_table:
+            QMessageBox.warning(self, "Error", "Debe seleccionar una tabla.")
+            return
+           
+        """ 
+        CORREGIR
+       
+        reply = QMessageBox.question(
+            self, 'Confirmación',
+            f"¿Esta seguro de eliminar la tabla {self.selected_table}?")
+
+        if reply == QMessageBox.Yes:
+            print("si")
+        else:
+            print("no") """ 
 
     def modify_table(self):
         if not self.selected_db:  # Verifica si hay una base de datos seleccionada

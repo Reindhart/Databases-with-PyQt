@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
     QTableWidgetItem, QMessageBox, QSizePolicy, QHeaderView
 )
 from PyQt6.QtGui import QColor, QBrush, QIcon
-from PyQt6.QtCore import QSize
+from PyQt6.QtCore import QSize, Qt
 import re
 from connection import create_database, drop_database, get_databases
 
@@ -70,9 +70,13 @@ class DynamicTextInput(QWidget):
         delete_button.setIconSize(QSize(24, 24))
         delete_button.setFixedSize(QSize(24, 24))
         delete_button.clicked.connect(lambda: self.delete_database(database_name))
-
-        self.table_widget.setCellWidget(row_position, 1, delete_button)
-        delete_button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        
+        delete_button_container = QWidget()
+        delete_button_layout = QHBoxLayout(delete_button_container)
+        delete_button_layout.addWidget(delete_button)
+        delete_button_layout.setAlignment(delete_button, Qt.AlignmentFlag.AlignCenter)
+        delete_button_layout.setContentsMargins(0, 0, 0, 0)
+        self.table_widget.setCellWidget(row_position, 1, delete_button_container)
 
         if row_position % 2 == 0:
             name_item.setBackground(QColor(220, 220, 220))

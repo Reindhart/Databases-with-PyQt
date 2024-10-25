@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import (QDialog, QLabel, QLineEdit, QSpinBox, QComboBox, QC
                              QHBoxLayout, QHeaderView, QWidget)
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QStandardItem, QStandardItemModel
+from connection import create_table
 
 class CrearTablaFormulario(QDialog):
     def __init__(self, selected_db):
@@ -89,6 +90,8 @@ class CrearTablaFormulario(QDialog):
         self.table_widget = QTableWidget(self)
         self.table_widget.setColumnCount(7)  # Número de columnas (atributos)
         self.table_widget.setHorizontalHeaderLabels(["Nombre", "Tipo", "Longitud", "Predeterminado", "Nulo", "A.I", "Llave"])
+        self.table_widget.setColumnWidth(4, 10)
+        self.table_widget.setColumnWidth(5, 10)
         layout_principal.addWidget(self.table_widget)
 
         # Botón para crear la tabla
@@ -97,6 +100,8 @@ class CrearTablaFormulario(QDialog):
         layout_principal.addWidget(self.crear_tabla_btn)
 
         self.setLayout(layout_principal)
+
+        # Centrar ventana
         self.center()
 
         # Inicializar atributos
@@ -141,7 +146,6 @@ class CrearTablaFormulario(QDialog):
 
                 # Autoincremento
                 autoincremento_widget = QCheckBox()
-                #autoincremento_widget.stateChanged.connect(lambda state, ai=autoincremento_widget, key=llave_widget: self.sync_autoincrement_with_key(ai, key))
                 autoincremento_container = QWidget()
                 autoincremento_layout = QHBoxLayout(autoincremento_container)
                 autoincremento_layout.addWidget(autoincremento_widget)
@@ -163,13 +167,7 @@ class CrearTablaFormulario(QDialog):
         """Sincroniza el valor del campo 'Predeterminado' cuando se desactiva 'Nulo'."""
         if not nulo_widget.isChecked() and predeterminado_widget.currentText() == "NULL":
             predeterminado_widget.setCurrentText("Ninguno")
-            
-    def sync_autoincrement_with_key(self, autoincremento_widget, llave_widget):
-        """Sincroniza el valor del campo 'Llave' cuando se activa 'Autoincremento'."""
-        if llave_widget.currentText() == "" and autoincremento_widget.isChecked():
-            llave_widget.setCurrentText("PRIMARY")
-
-        
+              
     def save_current_data(self):
         """Guarda temporalmente los datos ingresados en la tabla."""
         atributos = []
@@ -286,13 +284,6 @@ class CrearTablaFormulario(QDialog):
 
         return combo
 
-    def center(self):
-        screen_geometry = self.screen().availableGeometry()
-        window_geometry = self.frameGeometry()
-        center_point = screen_geometry.center()
-        window_geometry.moveCenter(center_point)
-        self.move(window_geometry.topLeft())
-
     def crear_tabla(self):
         """Lógica para crear la tabla en la base de datos seleccionada."""
         table_name = self.nombre_tabla_input.text().strip()
@@ -323,7 +314,8 @@ class CrearTablaFormulario(QDialog):
             atributo = [nombre, tipo, longitud, predeterminado, nulo, autoincremento, llave]
             lista_atributos.append(atributo)
 
-        print(self.generar_sql(table_name, lista_atributos))
+        if(create_table(self.selected_db ,self.generar_sql(table_name, lista_atributos))):
+            QMessageBox.information(self, "Creación de tabla", f"Se ha creado la tabla {table_name} exitosamente.")        
 
         self.accept()  # Cierra el diálogo si todo está correcto
 
@@ -331,8 +323,9 @@ class CrearTablaFormulario(QDialog):
         """Genera una sentencia SQL para crear una tabla, con validaciones."""
         # Validar el nombre de la tabla
         if not nombre_tabla.isidentifier():
-            return f"Error: El nombre de la tabla '{nombre_tabla}' no es válido."
-
+            QMessageBox.warning(self, "Error", f"El nombre de la tabla '{nombre_tabla}' no es válido.")
+            return 
+        
         # Lista para almacenar las partes del SQL
         columnas_sql = []
 
@@ -434,3 +427,10 @@ class CrearTablaFormulario(QDialog):
         sql = f"CREATE TABLE `{self.selected_db}`.`{nombre_tabla}` (\n    " + ",\n    ".join(columnas_sql) + "\n);"
         
         return sql
+    
+    def center(self):
+        screen_geometry = self.screen().availableGeometry()
+        window_geometry = self.frameGeometry()
+        center_point = screen_geometry.center()
+        window_geometry.moveCenter(center_point)
+        self.move(window_geometry.topLeft())
