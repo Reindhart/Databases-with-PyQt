@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QScr
 from PyQt6.QtGui import QColor
 from connection import get_tables, connect_to_database, get_databases, get_attributes, delete_table
 from tablas_crear import CrearTablaFormulario
-from tablas_modificar import ModificarTablaFormulario
+from tablas_modificar import ModificarAtributosDialog
 
 class Tablas(QWidget):
     def __init__(self):
@@ -87,7 +87,6 @@ class Tablas(QWidget):
     def on_table_selected(self, item):
         """Manejador para cuando se selecciona una tabla."""
         self.selected_table = item.text(0)
-        print(f"Tabla seleccionada: {self.selected_table}")
     
     def load_databases(self):
         databases = get_databases()  # Obtener bases de datos
@@ -222,11 +221,19 @@ class Tablas(QWidget):
             QMessageBox.warning(self, "Error", "Debe seleccionar una base de datos.")
             return
         
+        selected_items = [item for item in self.tables_tree.selectedItems() if item.parent() is None]  # Solo tablas
+        
+        if not selected_items:
+            QMessageBox.warning(self, "Error", "Debe seleccionar una tabla.")
+            return
+        
         attributes = get_attributes(connect_to_database(self.selected_db), self.selected_table)
         
-        dialog = ModificarTablaFormulario(attributes)  # Pasa la instancia del padre (Tablas)
-        """if dialog.exec():
+        print(attributes)
+        
+        dialog = ModificarAtributosDialog(attributes)  # Pasa la instancia del padre (Tablas)
+        if dialog.exec():
             # Recargar las tablas después de crear una nueva
-            self.load_tables(self.selected_db)"""
+            self.load_tables(self.selected_db)
 
         

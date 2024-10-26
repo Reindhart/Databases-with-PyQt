@@ -4,6 +4,7 @@ import sys
 from crear_eliminar import DynamicTextInput
 from respaldar_restaurar import Respaldar
 from tablas import Tablas
+from abc_tab import ABC
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -29,6 +30,9 @@ class MainWindow(QMainWindow):
         self.tablas_action = QAction("Tablas", self)
         self.tablas_action.triggered.connect(self.show_tablas_tab)  # Conectar a la nueva función
 
+        self.abc_action = QAction("ABC", self)
+        self.abc_action.triggered.connect(self.show_abc_tab)  # Conectar a la nueva función
+
         # Crear la acción de Recargar con un ícono en lugar de texto
         self.reload_action = QAction(self)
         self.reload_action.triggered.connect(self.reload_databases)
@@ -38,6 +42,7 @@ class MainWindow(QMainWindow):
         self.menu_bar.addAction(self.create_delete_action)
         self.menu_bar.addAction(self.backup_restore_action)
         self.menu_bar.addAction(self.tablas_action)
+        self.menu_bar.addAction(self.abc_action)
         self.menu_bar.addAction(self.reload_action)  # Acción solo con el ícono
 
         # Crear un widget contenedor para el layout
@@ -101,6 +106,13 @@ class MainWindow(QMainWindow):
             self.current_widget.deleteLater()  # Eliminar el widget actual
 
         self.current_widget = Tablas()  # Crear nueva instancia desde tablas.py
+        self.layout.addWidget(self.current_widget)  # Agregar al layout debajo de la línea
+
+    def show_abc_tab(self):
+        if self.current_widget is not None:
+            self.current_widget.deleteLater()  # Eliminar el widget actual
+
+        self.current_widget = ABC()  # Crear nueva instancia desde tablas.py
         self.layout.addWidget(self.current_widget)  # Agregar al layout debajo de la línea
 
     def reload_databases(self):

@@ -39,15 +39,12 @@ class CrearTablaFormulario(QDialog):
         self.table_widget.setHorizontalHeaderLabels(["Nombre", "Tipo", "Longitud", "Predeterminado", "Nulo", "A.I", "Llave"])
         layout_principal.addWidget(self.table_widget)
         
-        
-
         # Botón para crear la tabla
         self.crear_tabla_btn = QPushButton("Crear Tabla")
         self.crear_tabla_btn.clicked.connect(self.crear_tabla)
         layout_principal.addWidget(self.crear_tabla_btn)
 
         self.setLayout(layout_principal)
-
         self.center()
         
         # Inicializar atributos
