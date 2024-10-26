@@ -12,7 +12,7 @@ def create_database(db_name):
     """ Crea una base de datos si no existe """
     connection = create_connection()
     cursor = connection.cursor()
-    cursor.execute(f"CREATE DATABASE IF NOT EXISTS `{db_name}`;")
+    cursor.execute(f"CREATE DATABASE IF NOT EXISTS `{db_name}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;")
     connection.commit()
     cursor.close()
     connection.close()
@@ -133,9 +133,7 @@ def get_attributes(connection, table_name):
     return attributes
 
 def create_table(db_name, sql):    
-    
-    no_error = False
-    
+      
     try:
         connection = connect_to_database(db_name)        
         cursor = connection.cursor()        
@@ -143,11 +141,10 @@ def create_table(db_name, sql):
         connection.commit()
         cursor.close()
         connection.close()
-        no_error = True
     except mysql.connector.Error as e:
-        print(f"Error al crear la tabla: {e}")
+        return e
         
-    return
+    return ""
 
 def delete_table(db_name, table_name):
     

@@ -1,10 +1,9 @@
 from PyQt6.QtWidgets import QApplication, QMainWindow, QMenuBar, QFrame, QVBoxLayout, QWidget
-from PyQt6.QtGui import QAction, QIcon, QColor
+from PyQt6.QtGui import QAction, QIcon
 import sys
-from PyQt6.QtCore import Qt
 from crear_eliminar import DynamicTextInput
 from respaldar_restaurar import Respaldar
-from tablas import Tablas  # Importar el archivo tablas.py
+from tablas import Tablas
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -107,7 +106,10 @@ class MainWindow(QMainWindow):
     def reload_databases(self):
         if self.current_widget is not None:
             self.current_widget.load_databases()  # Recargar las bases de datos en el widget actual
-
+        if isinstance(self.current_widget, Tablas):
+            if(self.current_widget.load_tables_2()):
+                self.current_widget.load_tables(self.current_widget.load_tables_2())
+                        
     def center(self):
         screen_geometry = self.screen().availableGeometry()
         window_geometry = self.frameGeometry()

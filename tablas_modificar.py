@@ -4,8 +4,8 @@ from PyQt6.QtWidgets import (QDialog, QLabel, QLineEdit, QSpinBox, QComboBox, QC
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QStandardItem, QStandardItemModel
 from connection import create_table
-
-class CrearTablaFormulario(QDialog):
+    
+class ModificarTablaFormulario(QDialog):
     def __init__(self, selected_db):
         super().__init__()
         self.setWindowTitle("Crear Tabla")

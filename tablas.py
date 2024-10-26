@@ -1,7 +1,8 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QScrollArea, QTreeWidget, QTreeWidgetItem, QPushButton, QMessageBox
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QScrollArea, QTreeWidget, QTreeWidgetItem, QPushButton, QMessageBox, QAbstractItemView
 from PyQt6.QtGui import QColor
-from connection import get_tables, connect_to_database, get_databases, get_attributes
+from connection import get_tables, connect_to_database, get_databases, get_attributes, delete_table
 from tablas_crear import CrearTablaFormulario
+from tablas_modificar import ModificarTablaFormulario
 
 class Tablas(QWidget):
     def __init__(self):
@@ -33,6 +34,8 @@ class Tablas(QWidget):
 
         # Layout derecho para las tablas
         self.tables_tree = QTreeWidget()
+                
+        self.tables_tree.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
         
         # Ajuste de los encabezados para múltiples columnas
         self.tables_tree.setHeaderLabels(["Tabla", "Llave", "Tipo", "Extras"])
@@ -94,8 +97,12 @@ class Tablas(QWidget):
         for db in databases:
             self.database_list.addItem(db)
 
+    def load_tables_2(self):
+        return self.selected_db
+
     def load_tables(self, db_name):
         """Cargar las tablas de la base de datos seleccionada."""
+                
         connection = connect_to_database(db_name)  # Conectar a la base de datos seleccionada
         if connection:
             self.tables_tree.clear()  # Limpiar la lista existente de tablas
@@ -142,6 +149,7 @@ class Tablas(QWidget):
             self.tables_tree.setColumnWidth(1, 100)  # Llave (PK, FK)
             self.tables_tree.setColumnWidth(2, 120)  # Tipo de dato
             self.tables_tree.setColumnWidth(3, 180)  # Extras
+            
 
     def adjust_scroll_size(self):
         """Ajusta el tamaño del scroll para la lista de bases de datos al tamaño de la lista."""
@@ -186,25 +194,39 @@ class Tablas(QWidget):
         if not self.selected_db:  # Verifica si hay una base de datos seleccionada
             QMessageBox.warning(self, "Error", "Debe seleccionar una base de datos.")
             return
-        if not self.selected_table:
-            QMessageBox.warning(self, "Error", "Debe seleccionar una tabla.")
+        
+        selected_items = [item for item in self.tables_tree.selectedItems() if item.parent() is None]  # Solo tablas
+        
+        if not selected_items:
+            QMessageBox.warning(self, "Error", "Debe seleccionar al menos una tabla.")
             return
-           
-        """ 
-        CORREGIR
-       
+        
+        text = "¿Esta seguro de eliminar las tablas:\n\n" if len(selected_items) > 1 else "¿Esta seguro de eliminar la tabla: "
+        text2 = "Se han eliminado las tablas exitosamente" if len(selected_items) > 1 else "Se ha eliminado la tabla exitosamente"
+        
+        tables_to_delete = [f'"{item.text(0)}"' for item in selected_items]
+        print(tables_to_delete)
         reply = QMessageBox.question(
             self, 'Confirmación',
-            f"¿Esta seguro de eliminar la tabla {self.selected_table}?")
+            f"{text}{', '.join(tables_to_delete)}?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
 
-        if reply == QMessageBox.Yes:
-            print("si")
-        else:
-            print("no") """ 
+        if reply == QMessageBox.StandardButton.Yes:
+            for table_name in selected_items:
+                delete_table(self.selected_db, table_name.text(0))  # Eliminar cada tabla seleccionada
+                QMessageBox.information("Éxito", f"{text2}")
+            self.load_tables(self.selected_db)
 
     def modify_table(self):
         if not self.selected_db:  # Verifica si hay una base de datos seleccionada
             QMessageBox.warning(self, "Error", "Debe seleccionar una base de datos.")
             return
+        
+        attributes = get_attributes(connect_to_database(self.selected_db), self.selected_table)
+        
+        dialog = ModificarTablaFormulario(attributes)  # Pasa la instancia del padre (Tablas)
+        """if dialog.exec():
+            # Recargar las tablas después de crear una nueva
+            self.load_tables(self.selected_db)"""
 
-    
+        
