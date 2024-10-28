@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QScr
 from PyQt6.QtGui import QColor
 from connection import get_tables, connect_to_database, get_databases, get_attributes, delete_table
 from tablas_crear import CrearTablaFormulario
-from tablas_modificar import ModificarAtributosDialog
+from tablas_modificar import ModificarAtributos
 
 class Tablas(QWidget):
     def __init__(self):
@@ -220,7 +220,7 @@ class Tablas(QWidget):
         if not self.selected_db:  # Verifica si hay una base de datos seleccionada
             QMessageBox.warning(self, "Error", "Debe seleccionar una base de datos.")
             return
-        
+         
         selected_items = [item for item in self.tables_tree.selectedItems() if item.parent() is None]  # Solo tablas
         
         if not selected_items:
@@ -229,11 +229,6 @@ class Tablas(QWidget):
         
         attributes = get_attributes(connect_to_database(self.selected_db), self.selected_table)
         
-        print(attributes)
-        
-        dialog = ModificarAtributosDialog(attributes)  # Pasa la instancia del padre (Tablas)
+        dialog = ModificarAtributos(attributes)
         if dialog.exec():
-            # Recargar las tablas después de crear una nueva
             self.load_tables(self.selected_db)
-
-        

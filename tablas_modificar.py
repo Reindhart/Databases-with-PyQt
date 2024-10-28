@@ -1,83 +1,100 @@
-from PyQt6.QtWidgets import QDialog, QVBoxLayout, QTableWidget, QTableWidgetItem, QPushButton, QMessageBox
-from PyQt6.QtCore import Qt, QMimeData
+from PyQt6.QtWidgets import QDialog, QVBoxLayout, QAbstractItemView, QTableView, QProxyStyle
+from PyQt6.QtCore import QAbstractTableModel, Qt, QModelIndex
 
-class ModificarAtributosDialog(QDialog):
-    def __init__(self, attributes):
-        super().__init__()
+class ReorderTableModel(QAbstractTableModel):
+    def __init__(self, data, parent=None):
+        super().__init__(parent)
+        self._data = data
 
-        self.setWindowTitle("Modificar Atributos")
-        self.setMinimumSize(400, 300)
+    def columnCount(self, parent=None) -> int:
+        return 7
 
-        # Crear el layout principal
-        layout = QVBoxLayout(self)
+    def rowCount(self, parent=None) -> int:
+        return len(self._data)
 
-        # Crear el QTableWidget
-        self.table_widget = QTableWidget()
-        self.table_widget.setRowCount(len(attributes))  # Número de filas
-        self.table_widget.setColumnCount(3)  # Supongamos que hay 3 columnas (Nombre, Tipo, Llave)
+    def headerData(self, column: int, orientation, role: Qt.ItemDataRole):
+        headers = ["Nombre", "Tipo", "Longitud", "Predeterminado", "Nulo", "A.I", "Llave"]
+        return headers[column] if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal else None
 
-        # Establecer encabezados de la tabla
-        self.table_widget.setHorizontalHeaderLabels(["Nombre", "Tipo", "Longitud", "Predeterminado", "Nulo", "A.I", "Llave"])
+    def data(self, index: QModelIndex, role: Qt.ItemDataRole):
+        if not index.isValid() or role not in {Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole}:
+            return None
 
-        # Cargar los atributos en la tabla
-        for row, attr in enumerate(attributes):
-            self.table_widget.setItem(row, 0, QTableWidgetItem(attr['name']))
-            self.table_widget.setItem(row, 1, QTableWidgetItem(attr['col_type']))
-            self.table_widget.setItem(row, 2, QTableWidgetItem(attr['key_type']))
-            self.table_widget.setItem(row, 2, QTableWidgetItem(attr['extras']))
-            self.table_widget.setItem(row, 2, QTableWidgetItem(attr['Lenght']))
+        # Asegúrate de que el diccionario tenga todas las claves esperadas.
+        attribute = self._data[index.row()]
+        column_map = {
+            0: attribute.get("name", ""),
+            1: attribute.get("col_type", ""),
+            2: attribute.get("extras", ""),  # Asumiendo que aquí está la longitud
+            3: attribute.get("default_value", ""),  # Valor predeterminado, si existe
+            4: attribute.get("is_nullable", ""),  # Indicación de si permite nulos
+            5: attribute.get("auto_increment", ""),  # Auto incremento si aplica
+            6: attribute.get("key_type", "")  # Clave primaria, foránea o regular
+        }
+        return column_map.get(index.column(), "")
 
-        # Habilitar drag and drop
-        self.table_widget.setDragEnabled(True)
-        self.table_widget.setDropIndicatorShown(True)
-        self.table_widget.setAcceptDrops(True)
+    def flags(self, index: QModelIndex) -> Qt.ItemFlag:
+        if not index.isValid():
+            return Qt.ItemFlag.ItemIsDropEnabled
+        return (Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsEditable | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsDragEnabled)
 
-        layout.addWidget(self.table_widget)
+    def supportedDropActions(self) -> Qt.DropAction:
+        return Qt.DropAction.MoveAction | Qt.DropAction.CopyAction
 
-        # Botón para guardar cambios
-        save_button = QPushButton("Guardar Cambios")
-        layout.addWidget(save_button)
+    def relocateRow(self, row_source, row_target) -> None:
+        if row_source != row_target:
+            self.beginMoveRows(QModelIndex(), row_source, row_source, QModelIndex(), row_target)
+            self._data.insert(row_target, self._data.pop(row_source))
+            self.endMoveRows()
 
-        # Conectar el botón a su función
-        save_button.clicked.connect(self.save_changes)
 
-        self.setLayout(layout)
+class ReorderTableView(QTableView):
+    """QTableView with drag & drop row reordering support."""
 
-    def save_changes(self):
-        # Aquí puedes implementar la lógica para guardar los cambios en los atributos
-        QMessageBox.information(self, "Información", "Los cambios han sido guardados.")
-        self.accept()  # Cerrar el diálogo
+    class DropmarkerStyle(QProxyStyle):
+        def drawPrimitive(self, element, option, painter, widget=None):
+            if element == self.PrimitiveElement.PE_IndicatorItemViewItemDrop and not option.rect.isNull():
+                option.rect.setLeft(0)
+                if widget:
+                    option.rect.setRight(widget.width())
+            super().drawPrimitive(element, option, painter, widget)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.verticalHeader().hide()
+        self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+        self.setDragDropOverwriteMode(False)
+        self.setStyle(self.DropmarkerStyle())
 
     def dropEvent(self, event):
-        """Gestiona el evento de soltar una fila."""
-        if event.mimeData().hasFormat('application/x-qabstractitemmodeldatalist'):
-            data = event.mimeData()
-            row = data.data('application/x-qabstractitemmodeldatalist')
-            self.move_row(row, event.pos())
+        if event.source() is not self:
+            super().dropEvent(event)
+            return
 
-    def move_row(self, row, pos):
-        """Mueve la fila a la posición dada."""
-        target_row = self.table_widget.rowAt(pos.y())
-        if target_row == -1:
-            return  # Si no se ha soltado en una fila válida, salir.
+        selection = self.selectedIndexes()
+        from_index = selection[0].row() if selection else -1
+        to_index = self.indexAt(event.position().toPoint()).row()
+        if 0 <= from_index < self.model().rowCount() and 0 <= to_index < self.model().rowCount() and from_index != to_index:
+            self.model().relocateRow(from_index, to_index)
+            event.accept()
+        super().dropEvent(event)
 
-        # Obtener los datos de la fila que se mueve
-        row_data = [self.table_widget.takeItem(row, col) for col in range(self.table_widget.columnCount())]
 
-        # Insertar la fila en la nueva posición
-        if row < target_row:
-            # Si movemos hacia arriba
-            for i in range(row, target_row):
-                for col in range(self.table_widget.columnCount()):
-                    self.table_widget.setItem(i, col, self.table_widget.takeItem(i + 1, col))
-            self.table_widget.setItem(target_row, 0, row_data[0])
-            self.table_widget.setItem(target_row, 1, row_data[1])
-            self.table_widget.setItem(target_row, 2, row_data[2])
-        elif row > target_row:
-            # Si movemos hacia abajo
-            for i in range(row, target_row, -1):
-                for col in range(self.table_widget.columnCount()):
-                    self.table_widget.setItem(i, col, self.table_widget.takeItem(i - 1, col))
-            self.table_widget.setItem(target_row, 0, row_data[0])
-            self.table_widget.setItem(target_row, 1, row_data[1])
-            self.table_widget.setItem(target_row, 2, row_data[2])
+class ModificarAtributos(QDialog):
+    """Ventana de modificación de atributos de la tabla con reordenamiento de filas."""
+    def __init__(self, attributes):
+        super().__init__()
+        self.setWindowTitle("Modificar Atributos")
+        self.resize(400, 300)
+
+        layout = QVBoxLayout(self)
+    
+        view = ReorderTableView(self)
+        
+        #crashea aquí
+        view.setModel(ReorderTableModel(attributes))
+        layout.addWidget(view)
+        
+        self.setLayout(layout)

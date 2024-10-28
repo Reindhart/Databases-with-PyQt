@@ -37,56 +37,6 @@ class CrearTablaFormulario(QDialog):
         self.table_widget = QTableWidget(self)
         self.table_widget.setColumnCount(7)  # Número de columnas (atributos)
         self.table_widget.setHorizontalHeaderLabels(["Nombre", "Tipo", "Longitud", "Predeterminado", "Nulo", "A.I", "Llave"])
-        layout_principal.addWidget(self.table_widget)
-        
-        # Botón para crear la tabla
-        self.crear_tabla_btn = QPushButton("Crear Tabla")
-        self.crear_tabla_btn.clicked.connect(self.crear_tabla)
-        layout_principal.addWidget(self.crear_tabla_btn)
-
-        self.setLayout(layout_principal)
-        self.center()
-        
-        # Inicializar atributos
-        self.update_atributos()
-        
-    from PyQt6.QtWidgets import (QDialog, QLabel, QLineEdit, QSpinBox, QComboBox, QCheckBox, 
-                             QPushButton, QVBoxLayout, QTableWidget, QMessageBox, 
-                             QHBoxLayout, QHeaderView, QWidget)
-from PyQt6.QtCore import Qt
-
-class CrearTablaFormulario(QDialog):
-    def __init__(self, selected_db):
-        super().__init__()
-        self.setWindowTitle("Crear Tabla")
-
-        self.selected_db = selected_db  # Guardar la base de datos seleccionada
-        self.setGeometry(100, 100, 850, 300)
-
-        layout_principal = QVBoxLayout(self)
-
-        # Layout horizontal para nombre de la tabla y número de atributos
-        top_layout = QHBoxLayout()
-
-        # Campo para el nombre de la tabla
-        self.nombre_tabla_input = QLineEdit()
-        top_layout.addWidget(QLabel("Nombre de la tabla:"))
-        top_layout.addWidget(self.nombre_tabla_input)
-
-        # SpinBox para el número de atributos
-        self.num_atributos_spinbox = QSpinBox()
-        self.num_atributos_spinbox.setMinimum(1)
-        self.num_atributos_spinbox.valueChanged.connect(self.update_atributos)
-        top_layout.addWidget(QLabel("No. Atributos:"))
-        top_layout.addWidget(self.num_atributos_spinbox)
-
-        # Añadir el layout horizontal al layout principal
-        layout_principal.addLayout(top_layout)
-
-        # Tabla para atributos
-        self.table_widget = QTableWidget(self)
-        self.table_widget.setColumnCount(7)  # Número de columnas (atributos)
-        self.table_widget.setHorizontalHeaderLabels(["Nombre", "Tipo", "Longitud", "Predeterminado", "Nulo", "A.I", "Llave"])
         self.table_widget.setColumnWidth(4, 10)
         self.table_widget.setColumnWidth(5, 10)
         layout_principal.addWidget(self.table_widget)
@@ -327,6 +277,7 @@ class CrearTablaFormulario(QDialog):
         
         # Lista para almacenar las partes del SQL
         columnas_sql = []
+        key_column_sql = []
 
         # Diccionario para manejar tipos que soportan CURRENT_TIMESTAMP
         tipos_timestamp = {"TIMESTAMP", "DATETIME"}
@@ -411,8 +362,8 @@ class CrearTablaFormulario(QDialog):
             # LLAVES
 
             if llave != "":               
-                key_sql = f", {llave} (`{nombre}`)"
-                columna_sql += (key_sql)
+                key_sql = f"{llave} KEY (`{nombre}`)" if llave == "PRIMARY" else f"{llave}  (`{nombre}`)"
+                key_column_sql.append(key_sql)
                 
 
 #---------------------------------------------------------
@@ -423,8 +374,16 @@ class CrearTablaFormulario(QDialog):
 
 
         # Generar la sentencia completa
-        sql = f"CREATE TABLE `{self.selected_db}`.`{nombre_tabla}` (\n    " + ",\n    ".join(columnas_sql) + "\n);"
-        
+        sql = (f"CREATE TABLE `{self.selected_db}`.`{nombre_tabla}` (\n    "
+           + ",\n    ".join(columnas_sql))
+    
+        if key_column_sql:  # Solo agregar si hay llaves
+            sql += ",\n    " + ",\n    ".join(key_column_sql)
+
+        sql += "\n);"
+
+        print(sql)
+
         return sql
     
     def center(self):
