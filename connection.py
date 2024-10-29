@@ -82,55 +82,85 @@ def get_tables(connection):
     return tables
 
 def get_attributes(connection, table_name):
-    cursor = connection.cursor()
-    cursor.execute(f"SHOW COLUMNS FROM {table_name};")
-    attributes = []
     
-    for column in cursor.fetchall():
-        name = column[0]
-        col_type = column[1]  # Tipo de dato (VARCHAR, INT, etc.)
-        key = column[3]       # Aquí se encuentra si es PK o FK (PRI, MUL)
+    try:
+        cursor = connection.cursor()
+    
+        # Ejecutar SHOW COLUMNS y almacenar los resultados en una lista
+        cursor.execute(f"SHOW COLUMNS FROM {table_name};")
+        columns = cursor.fetchall()
         
-        # Revisar longitud si aplica
-        length = ""
-        if "(" in col_type:
-            length = col_type[col_type.index("(") + 1:col_type.index(")")] # Extraer longitud
-            col_type = col_type.split("(")[0]  # Eliminar longitud del tipo
+        # Ejecutar SHOW CREATE TABLE para verificar claves foráneas e índices
+        cursor.execute(f"SHOW CREATE TABLE {table_name};")
+        create_table_sql = cursor.fetchone()[1]
 
-        # Revisar si es auto_increment
-        auto_increment = "Auto Increment" if "auto_increment" in column[5] else ""
+        attributes = []
 
-        # Revisar valor por defecto
-        default_value = f"Default: {column[4]}" if column[4] is not None else ""
+        for column in columns:
+            name = column[0]
+            col_type = column[1]  # Tipo de dato (VARCHAR, INT, etc.)
+            key = column[3]       # Aquí se encuentra si es PK, MUL, etc.
+            null_status = "NULL" if column[2] == "YES" else "NOT NULL"  # Determinar si permite valores NULL
 
-        # Construir los extras
-        extras = []
-        if auto_increment:
-            extras.append(auto_increment)
-        if length:
-            extras.append(f"Length: {length}")
-        if default_value:
-            extras.append(default_value)
+            # Revisar longitud si aplica
+            length = ""
+            if "(" in col_type:
+                length = col_type[col_type.index("(") + 1:col_type.index(")")]  # Extraer longitud
+                col_type = col_type.split("(")[0]  # Eliminar longitud del tipo
+
+            # Revisar si es auto_increment
+            auto_increment = "Auto Increment" if "auto_increment" in column[5] else ""
+
+            # Revisar valor por defecto
+            default_value = f"Default: {column[4]}" if column[4] is not None else ""
+
+            # Construir los extras
+            extras = [null_status]  # Agregar NULL o NOT NULL a los extras
+            if auto_increment:
+                extras.append(auto_increment)
+            if length:
+                extras.append(f"Length: {length}")
+            if default_value:
+                extras.append(default_value)
+            
+            extras_str = ", ".join(extras)
+
+            # Determinar el tipo de llave
+            if key == "PRI":
+                key_type = "PRIMARY"
+            elif key == "UNI":
+                key_type = "UNIQUE"
+            elif key == "MUL":
+                # Revisar si es una clave foránea o un índice regular en la definición de la tabla
+                if f"FOREIGN KEY (`{name}`)" in create_table_sql:
+                    key_type = "FOREIGN"
+                elif f"INDEX KEY (`{name}`)" in create_table_sql:
+                    key_type = "INDEX"
+                elif f"UNIQUE KEY (`{name}`)" in create_table_sql:
+                    key_type = "UNIQUE"
+                elif f"SPATIAL KEY (`{name}`)" in create_table_sql:
+                    key_type = "SPATIAL"
+                elif f"FULLTEXT KEY (`{name}`)" in create_table_sql:
+                    key_type = "FULLTEXT"
+            else:
+                key_type = "Regular"  # No es clave ni índice
+
+
+            # Añadir el atributo a la lista de atributos
+            attributes.append({
+                "name": name,
+                "key_type": key_type,
+                "col_type": col_type,
+                "extras": extras_str
+            })
+
+        cursor.close()
+    
+    except mysql.connector.Error as e:
+        print(e)
         
-        extras_str = ", ".join(extras)
-
-        # Verificar si es clave primaria o foránea
-        if key == "PRI":
-            key_type = "PK"  # Clave primaria
-        elif key == "MUL":
-            key_type = "FK"  # Clave foránea
-        else:
-            key_type = "Regular"  # Ni PK ni FK
-
-        attributes.append({
-            "name": name,          # Nombre del atributo
-            "key_type": key_type,  # Aquí asignamos correctamente la clave key_type
-            "col_type": col_type,  # Tipo de dato
-            "extras": extras_str   # Información adicional como longitud o auto_increment
-        })
-
-    cursor.close()
     return attributes
+
 
 def create_table(db_name, sql):    
       

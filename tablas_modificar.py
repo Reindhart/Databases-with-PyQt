@@ -87,7 +87,7 @@ class ModificarAtributos(QDialog):
     def __init__(self, attributes):
         super().__init__()
         self.setWindowTitle("Modificar Atributos")
-        self.resize(400, 300)
+        self.resize(850, 300)
 
         layout = QVBoxLayout(self)
     

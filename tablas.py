@@ -121,14 +121,30 @@ class Tablas(QWidget):
                     # Columna 0: Nombre del atributo
                     attr_item.setText(0, attr['name'])
                     attr_item.setForeground(0, QColor("green"))
-
+                    
+                    print(attr['key_type'])
+                    
                     # Columna 1: Llave (PK, FK o Regular)
-                    attr_item.setText(1, attr['key_type'])  # Aquí debe mostrarse PK, FK o Regular
-                    if attr['key_type'] == "PK":
+                    if attr['key_type'] == "PRIMARY":
+                        attr_item.setText(1, "PK")
                         attr_item.setForeground(1, QColor("gold"))
-                    elif attr['key_type'] == "FK":
+                    elif attr['key_type'] == "FOREIGN":
+                        attr_item.setText(1, "FK")
                         attr_item.setForeground(1, QColor("silver"))
+                    elif attr['key_type'] == "UNIQUE":
+                        attr_item.setText(1, "Unique")
+                        attr_item.setForeground(1, QColor("blue"))
+                    elif attr['key_type'] == "INDEX":
+                        attr_item.setText(1, "Index")
+                        attr_item.setForeground(1, QColor("purple"))
+                    elif attr['key_type'] == "FULLTEXT":
+                        attr_item.setText(1, "Fulltext")
+                        attr_item.setForeground(1, QColor("green"))
+                    elif attr['key_type'] == "SPATIAL":
+                        attr_item.setText(1, "Spatial")
+                        attr_item.setForeground(1, QColor("darkGreen"))
                     else:
+                        attr_item.setText(1, "Regular")
                         attr_item.setForeground(1, QColor("black"))
 
                     # Columna 2: Tipo de dato (VARCHAR, INT, etc.)
