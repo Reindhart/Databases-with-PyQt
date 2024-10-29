@@ -100,7 +100,8 @@ def get_attributes(connection, table_name):
             name = column[0]
             col_type = column[1]  # Tipo de dato (VARCHAR, INT, etc.)
             key = column[3]       # Aquí se encuentra si es PK, MUL, etc.
-            null_status = "NULL" if column[2] == "YES" else "NOT NULL"  # Determinar si permite valores NULL
+            null_status = "Nulo: "
+            null_status += "sí" if column[2] == "YES" else "no"  # Determinar si permite valores NULL
 
             # Revisar longitud si aplica
             length = ""

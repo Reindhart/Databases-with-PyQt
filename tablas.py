@@ -122,8 +122,6 @@ class Tablas(QWidget):
                     attr_item.setText(0, attr['name'])
                     attr_item.setForeground(0, QColor("green"))
                     
-                    print(attr['key_type'])
-                    
                     # Columna 1: Llave (PK, FK o Regular)
                     if attr['key_type'] == "PRIMARY":
                         attr_item.setText(1, "PK")
