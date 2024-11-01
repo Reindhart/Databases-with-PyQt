@@ -175,50 +175,20 @@ class CrearTablaFormulario(QDialog):
             model.appendRow(item)
 
         # Categoría numérica
-        category_numeric = QStandardItem("--Numeric--")
-        category_numeric.setFlags(Qt.ItemFlag.NoItemFlags & ~Qt.ItemFlag.ItemIsEnabled)  # No seleccionable
-        model.appendRow(category_numeric)
+        categories = {
+            "--Numeric--": ["TINYINT", "SMALLINT", "MEDIUMINT", "INT", "BIGINT", "DECIMAL", "FLOAT", "DOUBLE", "REAL", "BIT", "BOOLEAN", "SERIAL"],
+            "--String--": ["CHAR", "VARCHAR", "TINYTEXT", "TEXT", "MEDIUMTEXT", "LONGTEXT", "BINARY" , "VARBINARY", "TINYBLOB", "BLOB", "MEDIUMBLOB", "LONGBLOB", "ENUM", "SET"],
+            "--Date--": ["DATE", "DATETIME", "TIMESTAMP", "TIME", "YEAR"],
+            "--Spatial--": ["GEOMETRY", "POINT", "LINESTRING", "POLYGON", "MULTIPOINT", "MULTILINESTRING", "MULTIPOLYGON", "GEOMETRYCOLLECTION"],
+            "--JSON--": ["JSON"]
+        }
 
-        for data_type in ["TINYINT", "SMALLINT", "MEDIUMINT", "INT", "BIGINT", 
-                          "DECIMAL", "FLOAT", "DOUBLE", "REAL", "BIT", "BOOLEAN", "SERIAL"]:
-            item = QStandardItem(data_type)
+        for category, types in categories.items():
+            item = QStandardItem(category)
+            item.setFlags(Qt.ItemFlag.NoItemFlags & ~Qt.ItemFlag.ItemIsEnabled)
             model.appendRow(item)
-
-        # Categoría de cadenas
-        category_string = QStandardItem("--String--")
-        category_string.setFlags(Qt.ItemFlag.NoItemFlags)  # No seleccionable
-        model.appendRow(category_string)
-
-        for data_type in ["CHAR", "VARCHAR", "TINYTEXT", "TEXT", "MEDIUMTEXT", "LONGTEXT", 
-                          "BINARY" , "VARBINARY", "TINYBLOB", "BLOB", "MEDIUMBLOB", "LONGBLOB",
-                          "ENUM", "SET"]:
-            item = QStandardItem(data_type)
-            model.appendRow(item)
-
-        # Categoría de fecha y hora
-        category_date_time = QStandardItem("--Date--")
-        category_date_time.setFlags(Qt.ItemFlag.NoItemFlags)  # No seleccionable
-        model.appendRow(category_date_time)
-
-        for data_type in ["DATE", "DATETIME", "TIMESTAMP", "TIME", "YEAR"]:
-            item = QStandardItem(data_type)
-            model.appendRow(item)
-
-        # Categoría de espaciales
-        category_spatial = QStandardItem("--Spatial--")
-        category_spatial.setFlags(Qt.ItemFlag.NoItemFlags)  # No seleccionable
-        model.appendRow(category_spatial)
-
-        for data_type in ["GEOMETRY", "POINT", "LINESTRING", "POLYGON", "MULTIPOINT", "MULTILINESTRING",
-                          "MULTIPOLYGON", "GEOMETRYCOLLECTION"]:
-            item = QStandardItem(data_type)
-            model.appendRow(item)
-
-        # Categoría de espaciales
-        category_json = QStandardItem("--JSON--")
-        category_json.setFlags(Qt.ItemFlag.NoItemFlags)  # No seleccionable
-        model.appendRow(category_json)
-        model.appendRow(QStandardItem("JSON"))
+            for data_type in types:
+                model.appendRow(QStandardItem(data_type))
 
         combo.setModel(model)
 
@@ -381,8 +351,6 @@ class CrearTablaFormulario(QDialog):
             sql += ",\n    " + ",\n    ".join(key_column_sql)
 
         sql += "\n);"
-
-        print(sql)
 
         return sql
     

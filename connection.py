@@ -132,10 +132,9 @@ def get_attributes(connection, table_name):
             elif key == "UNI":
                 key_type = "UNIQUE"
             elif key == "MUL":
-                # Revisar si es una clave foránea o un índice regular en la definición de la tabla
                 if f"FOREIGN KEY (`{name}`)" in create_table_sql:
                     key_type = "FOREIGN"
-                elif f"INDEX KEY (`{name}`)" in create_table_sql:
+                elif f"INDEX KEY (`{name}`)" or f"KEY (`{name}`)" in create_table_sql:
                     key_type = "INDEX"
                 elif f"UNIQUE KEY (`{name}`)" in create_table_sql:
                     key_type = "UNIQUE"
