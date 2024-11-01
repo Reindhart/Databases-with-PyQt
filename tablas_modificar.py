@@ -140,12 +140,16 @@ class ModificarAtributos(QDialog):
             # Crear combobox de predeterminados
             combo_default = QComboBox()
             combo_default.addItems(["Ninguno", "NULL", "CURRENT_TIMESTAMP"])
-            default = attribute.get("extras", "")
-            index_default = combo_default.findText(default.upper())  # Selecciona la llave actual
+            default = ""
+            extras = attribute.get("extras", "")
+            match = re.search(r"Default:\s*([^\s,]+)", extras)  # Busca el valor después de "Default:"
+            if match:
+                default = match.group(1).rstrip("()")  # Obtiene el valor predeterminado
+            index_default = combo_default.findText(default.upper())
             if index_default >= 0:
                 combo_default.setCurrentIndex(index_default)
-            view.setIndexWidget(model.index(row, 3), combo_default)  # Asigna el combo box a la celda
-            
+            view.setIndexWidget(model.index(row, 3), combo_default)
+
             # Crear y asignar los widgets de checkbox
             nulo_checkbox = QCheckBox()
             nulo_checkbox.setChecked(attribute.get("is_nullable", False))
