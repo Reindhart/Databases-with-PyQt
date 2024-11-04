@@ -235,6 +235,7 @@ class CrearTablaFormulario(QDialog):
             QMessageBox.information(self, "Creación de tabla", f"Se ha creado la tabla \"{table_name}\" exitosamente.")
         else:
             QMessageBox.warning(self, "Error:", f"No se ha podido crear la tabla \"{table_name}\".\n\n {create_table(self.selected_db ,self.generar_sql(table_name, lista_atributos))}")
+            return
 
         self.accept()  # Cierra el diálogo si todo está correcto
 
@@ -242,8 +243,8 @@ class CrearTablaFormulario(QDialog):
         """Genera una sentencia SQL para crear una tabla, con validaciones."""
         # Validar el nombre de la tabla
         if not nombre_tabla.isidentifier():
-            QMessageBox.warning(self, "Error", f"El nombre de la tabla '{nombre_tabla}' no es válido.")
-            return 
+            return f"El nombre de la tabla '{nombre_tabla}' no es válido."
+             
         
         # Lista para almacenar las partes del SQL
         columnas_sql = []
@@ -270,8 +271,8 @@ class CrearTablaFormulario(QDialog):
 
             # Validar nombre del atributo
             if not nombre.isidentifier() or nombre.upper() in sql_reserved_keywords:
-                QMessageBox.warning(self, "Error", f"Error: El nombre del atributo '{nombre}' no es válido o es una palabra reservada de SQL.")
-                return
+                return f"Error: El nombre del atributo '{nombre}' no es válido o es una palabra reservada de SQL."
+                
 
             # Generar la definición del atributo
             columna_sql = f"`{nombre}` {tipo}"

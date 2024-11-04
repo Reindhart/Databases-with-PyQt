@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QAbstractItemView, QTableView, 
                              QProxyStyle, QPushButton, QHeaderView, QCheckBox, QComboBox, 
-                             QHBoxLayout, QWidget)
+                             QHBoxLayout, QWidget, QMessageBox)
 from PyQt6.QtCore import QAbstractTableModel, Qt, QModelIndex, QSize
 from PyQt6.QtGui import QStandardItem, QStandardItemModel, QIcon
 import re
@@ -33,19 +33,15 @@ class ReorderTableModel(QAbstractTableModel):
         
         # Valores predeterminados para columnas adicionales
         default_value = ""
-        is_nullable = False
-        auto_increment = False
+        is_nullable = ""
+        auto_increment = ""
         length = ""
         
         # Dividir y verificar los componentes de extras
-        if "Nulo: sí" in extras:
-            is_nullable = True
         if "Length:" in extras:
             length = extras.split("Length: ")[-1].split(",")[0]  # Extraer longitud
         if "Default:" in extras:
             default_value = extras.split("Default: ")[-1].split(",")[0]  # Extraer valor por defecto
-        if "Auto Increment" in extras:
-            auto_increment = True
 
         # Mapea las columnas visibles en tu tabla con la información extraída
         column_map = {
@@ -150,14 +146,24 @@ class ModificarAtributos(QDialog):
                 combo_default.setCurrentIndex(index_default)
             view.setIndexWidget(model.index(row, 3), combo_default)
 
-            # Crear y asignar los widgets de checkbox
+            # Crear y asignar los widgets de checkbox   
             nulo_checkbox = QCheckBox()
-            nulo_checkbox.setChecked(attribute.get("is_nullable", False))
-            view.setIndexWidget(model.index(row, 4), nulo_checkbox)
+            nulo_container = QWidget()
+            nulo_layout = QHBoxLayout(nulo_container)
+            nulo_layout.addWidget(nulo_checkbox)
+            nulo_layout.setAlignment(nulo_checkbox, Qt.AlignmentFlag.AlignCenter)
+            nulo_layout.setContentsMargins(0, 0, 0, 0)
+            nulo_checkbox.setChecked("Nulo: sí" in extras)
+            view.setIndexWidget(model.index(row, 4), nulo_container)
             
             ai_checkbox = QCheckBox()
-            ai_checkbox.setChecked(attribute.get("auto_increment", False))
-            view.setIndexWidget(model.index(row, 5), ai_checkbox)
+            autoincremento_container = QWidget()
+            autoincremento_layout = QHBoxLayout(autoincremento_container)
+            autoincremento_layout.addWidget(ai_checkbox)
+            autoincremento_layout.setAlignment(ai_checkbox, Qt.AlignmentFlag.AlignCenter)
+            autoincremento_layout.setContentsMargins(0, 0, 0, 0)
+            ai_checkbox.setChecked("Auto Increment" in extras)
+            view.setIndexWidget(model.index(row, 5), autoincremento_container)
 
             # Crear combobox de llaves
             combo_key = QComboBox()
@@ -167,6 +173,20 @@ class ModificarAtributos(QDialog):
             if index_key >= 0:
                 combo_key.setCurrentIndex(index_key)
             view.setIndexWidget(model.index(row, 6), combo_key)  # Asigna el combo box a la celda
+            
+            # Borrar línea
+            delete_button = QPushButton(self)
+            delete_button.setIcon(QIcon('delete.png'))  
+            delete_button.setIconSize(QSize(24, 24))
+            delete_button.setFixedSize(QSize(24, 24))
+            delete_button.clicked.connect(lambda checked, r=row: self.delete_table("algo", r))
+            delete_button_container = QWidget()
+            delete_button_layout = QHBoxLayout(delete_button_container)
+            delete_button_layout.addWidget(delete_button)
+            delete_button_layout.setAlignment(delete_button, Qt.AlignmentFlag.AlignCenter)
+            delete_button_layout.setContentsMargins(0, 0, 0, 0)
+            view.setIndexWidget(model.index(row, 7), delete_button_container)
+
 
         layout_principal.addWidget(view)
         
@@ -188,7 +208,7 @@ class ModificarAtributos(QDialog):
         buttons_layout.addWidget(self.aplicar_cambios_btn)
         buttons_layout.addWidget(self.cancel_btn)
         
-        self.aplicar_cambios_btn.clicked.connect(self.aplicar_cambios)
+        self.aplicar_cambios_btn.clicked.connect(lambda: self.aplicar_cambios(model))
         self.agregar_fila_btn.clicked.connect(self.agregar_fila)
         self.cancel_btn.clicked.connect(self.cancel) 
         
@@ -197,13 +217,40 @@ class ModificarAtributos(QDialog):
     def agregar_fila(self):
         pass    
         
-    def aplicar_cambios(self):
-        pass
+    def aplicar_cambios(self, model):
+        print("Iniciando aplicar_cambios")
+        try:
+            # Cambia esto a DisplayRole
+            role = Qt.ItemDataRole.DisplayRole
+            for row in range(model.rowCount()):
+                for column in range(model.columnCount()):
+                    index = model.index(row, column)  # Obtén el índice del modelo
+                    data = model.data(index, role)  # Obtén el dato usando el índice
+                    print(f"Datos en ({row}, {column}): {data}")
+                    # Aquí puedes procesar los datos para construir el SQL o realizar otras acciones
+        except Exception as e:
+            print(f"Error en aplicar_cambios: {e}")
+
+
+    
+    def generar_sql(self, cambios):
+        sql_statements = []
+        for accion, atributo in cambios:
+            if accion == "ADD":
+                sql_statements.append(f"ALTER TABLE nombre_tabla ADD COLUMN {atributo['name']} {atributo['col_type']} ...")
+            elif accion == "MODIFY":
+                sql_statements.append(f"ALTER TABLE nombre_tabla MODIFY COLUMN {atributo['name']} {atributo['col_type']} ...")
+            elif accion == "DELETE":
+                sql_statements.append(f"ALTER TABLE nombre_tabla DROP COLUMN {atributo['name']}")
+        
+        return sql_statements
+
     
     def cancel(self):
         self.accept()
     
-    def delete_table(self, table_name):
+    def delete_table(self, table_name, row):
+        print(f"{row}: entre")
         pass
 
     def create_categorized_combobox(self):
@@ -235,7 +282,7 @@ class ModificarAtributos(QDialog):
 
         # Estilo para evitar el resaltado de fondo al pasar el mouse
         combo.setStyleSheet("""
-            QComboBox QAbstractItemView::item:disabled {
+            QComboBox QAbstractItemmodel::item:disabled {
                 background: transparent; /* Sin color de fondo para las categorías */
             }
         """)
