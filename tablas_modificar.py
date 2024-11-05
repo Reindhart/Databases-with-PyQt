@@ -21,49 +21,67 @@ class ReorderTableModel(QAbstractTableModel):
         return headers[column] if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal else None
 
     def data(self, index: QModelIndex, role: Qt.ItemDataRole):
-        if not index.isValid() or role not in {Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole}:
+        if not index.isValid():
             return None
 
         attribute = self._data[index.row()]
-        # Extrae información de las columnas principales
         name = attribute.get("name", "")
         col_type = attribute.get("col_type", "")
         key_type = attribute.get("key_type", "")
         extras = attribute.get("extras", "")
         
-        # Valores predeterminados para columnas adicionales
-        default_value = ""
-        is_nullable = ""
-        auto_increment = ""
         length = ""
-        
-        # Dividir y verificar los componentes de extras
         if "Length:" in extras:
             length = extras.split("Length: ")[-1].split(",")[0]  # Extraer longitud
-        if "Default:" in extras:
-            default_value = extras.split("Default: ")[-1].split(",")[0]  # Extraer valor por defecto
 
-        # Mapea las columnas visibles en tu tabla con la información extraída
         column_map = {
-            0: name,
-            1: col_type,
-            2: length,          # Longitud
-            3: default_value,   # Valor predeterminado
-            4: is_nullable,     # Nulo
-            5: auto_increment,  # Auto incremento
-            6: key_type         # Tipo de llave
+            0: name,    # Editable
+            1: col_type,  # Editable
+            2: length,    # Editable
+            3: "",   # Predeterminado, no editable
+            4: "",   # Nulo, no editable
+            5: "",   # A.I, no editable
+            6: key_type,  # Editable
+            7: ""   # Otra columna, puede ser editable o no
         }
 
-        # Retorna el valor correspondiente a la columna actual o un string vacío
-        return column_map.get(index.column(), "")
+        if role in (Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole):
+            return column_map.get(index.column(), "")
+        return None
+
+    def setData(self, index, value, role=Qt.ItemDataRole.EditRole):
+        if role == Qt.ItemDataRole.EditRole and index.column() in {0, 1, 2, 6}:  # Solo permitir edición en columnas específicas
+            # Guarda el nuevo valor en el modelo de datos
+            if index.column() == 0:
+                self._data[index.row()]["name"] = value
+            elif index.column() == 1:
+                self._data[index.row()]["col_type"] = value
+            elif index.column() == 2:
+                # Aquí puedes decidir cómo manejar la longitud
+                self._data[index.row()]["extras"] = f"Length: {value}, ..."
+            elif index.column() == 6:
+                self._data[index.row()]["key_type"] = value
+            
+            self.dataChanged.emit(index, index, [role])
+            return True
+        return False
 
     def flags(self, index: QModelIndex) -> Qt.ItemFlag:
         if not index.isValid():
             return Qt.ItemFlag.ItemIsDropEnabled
-        return (Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsEditable | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsDragEnabled)
+
+        if index.column() in {0, 1, 2, 6}:  # Solo estas columnas serán editables
+            return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsEditable | Qt.ItemFlag.ItemIsSelectable
+        return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable  # No editables
 
     def supportedDropActions(self) -> Qt.DropAction:
         return Qt.DropAction.MoveAction | Qt.DropAction.CopyAction
+
+    def relocateRow(self, row_source, row_target) -> None:
+        if row_source != row_target:
+            self.beginMoveRows(QModelIndex(), row_source, row_source, QModelIndex(), row_target)
+            self._data.insert(row_target, self._data.pop(row_source))
+            self.endMoveRows()
 
     def relocateRow(self, row_source, row_target) -> None:
         if row_source != row_target:
@@ -104,7 +122,6 @@ class ReorderTableView(QTableView):
             self.model().relocateRow(from_index, to_index)
             event.accept()
         super().dropEvent(event)
-
 
 class ModificarAtributos(QDialog):
     """Ventana de modificación de atributos de la tabla con reordenamiento de filas."""
@@ -186,9 +203,6 @@ class ModificarAtributos(QDialog):
             delete_button_layout.setAlignment(delete_button, Qt.AlignmentFlag.AlignCenter)
             delete_button_layout.setContentsMargins(0, 0, 0, 0)
             view.setIndexWidget(model.index(row, 7), delete_button_container)
-
-
-        layout_principal.addWidget(view)
         
         view.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         view.setColumnWidth(4, 10)
@@ -219,18 +233,50 @@ class ModificarAtributos(QDialog):
         
     def aplicar_cambios(self, model):
         print("Iniciando aplicar_cambios")
+        cambios = []  # Lista para almacenar los cambios
+
         try:
-            # Cambia esto a DisplayRole
-            role = Qt.ItemDataRole.DisplayRole
             for row in range(model.rowCount()):
-                for column in range(model.columnCount()):
-                    index = model.index(row, column)  # Obtén el índice del modelo
-                    data = model.data(index, role)  # Obtén el dato usando el índice
-                    print(f"Datos en ({row}, {column}): {data}")
-                    # Aquí puedes procesar los datos para construir el SQL o realizar otras acciones
+                # Obtener valores de los QComboBox
+                tipo_index = model.index(row, 1)
+                tipo_combo = self.findChild(QComboBox, f"tipo_combo_{row}")  # Suponiendo que asignas un nombre único
+                tipo_value = tipo_combo.currentText() if tipo_combo else model.data(tipo_index, Qt.ItemDataRole.DisplayRole)
+
+                # Obtener el valor predeterminado
+                default_index = model.index(row, 3)
+                text = QComboBox.currentText()
+                default_combo = self.findChild(QComboBox, f"default_combo_{row}")  # Asignar un nombre único
+                default_value = default_combo.currentText() if default_combo else model.data(default_index, Qt.ItemDataRole.DisplayRole)
+
+                # Obtener el estado de los QCheckBox
+                nulo_checkbox = view.indexWidget(model.index(row, 4)).findChild(QCheckBox)  # QCheckBox para Nulo
+                nulo_value = "Nulo: sí" if nulo_checkbox and nulo_checkbox.isChecked() else "Nulo: no"
+
+                ai_checkbox = view.indexWidget(model.index(row, 5)).findChild(QCheckBox)  # QCheckBox para Auto Increment
+                ai_value = "Auto Increment: sí" if ai_checkbox and ai_checkbox.isChecked() else "Auto Increment: no"
+
+
+                # Obtener el tipo de llave
+                key_index = model.index(row, 6)
+                key_combo = self.findChild(QComboBox, f"key_combo_{row}")  # Asignar un nombre único
+                key_value = key_combo.currentText() if key_combo else model.data(key_index, Qt.ItemDataRole.DisplayRole)
+
+                # Agregar a cambios
+                cambios.append({
+                    "name": model.data(model.index(row, 0), Qt.ItemDataRole.DisplayRole),
+                    "col_type": tipo_value,
+                    "default": default_value,
+                    "nulo": nulo_value,
+                    "ai": ai_value,
+                    "key_type": key_value
+                })
+
+                print(f"Datos en fila {row}: {cambios[-1]}")
+
+            # Procesar los cambios
+            #self.generar_sql(cambios)
         except Exception as e:
             print(f"Error en aplicar_cambios: {e}")
-
 
     
     def generar_sql(self, cambios):
