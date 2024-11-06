@@ -132,6 +132,8 @@ class ModificarAtributos(QDialog):
 
         layout_principal = QVBoxLayout(self)
 
+        # Diccionario para almacenar los widgets de cada fila
+        self.widgets = {}
     
         view = ReorderTableView(self)
         view.setModel(ReorderTableModel(attributes))
@@ -141,13 +143,15 @@ class ModificarAtributos(QDialog):
         view.setModel(model)
 
         for row, attribute in enumerate(attributes):
+            self.widgets[row] = {}
 
-            # Crear combobox de llaves
+            # Crear combobox de tipos
             combo = self.create_categorized_combobox()
             tipo = attribute.get("col_type", "")
             index = combo.findText(tipo.upper())  # Selecciona el tipo de dato actual
             if index >= 0:
                 combo.setCurrentIndex(index)
+            self.widgets[row]["tipo"] = combo
             view.setIndexWidget(model.index(row, 1), combo)  # Asigna el combo box a la celda
             
             # Crear combobox de predeterminados
@@ -161,6 +165,7 @@ class ModificarAtributos(QDialog):
             index_default = combo_default.findText(default.upper())
             if index_default >= 0:
                 combo_default.setCurrentIndex(index_default)
+            self.widgets[row]["default"] = combo_default
             view.setIndexWidget(model.index(row, 3), combo_default)
 
             # Crear y asignar los widgets de checkbox   
@@ -171,6 +176,7 @@ class ModificarAtributos(QDialog):
             nulo_layout.setAlignment(nulo_checkbox, Qt.AlignmentFlag.AlignCenter)
             nulo_layout.setContentsMargins(0, 0, 0, 0)
             nulo_checkbox.setChecked("Nulo: sí" in extras)
+            self.widgets[row]["nulo"] = nulo_checkbox
             view.setIndexWidget(model.index(row, 4), nulo_container)
             
             ai_checkbox = QCheckBox()
@@ -180,6 +186,7 @@ class ModificarAtributos(QDialog):
             autoincremento_layout.setAlignment(ai_checkbox, Qt.AlignmentFlag.AlignCenter)
             autoincremento_layout.setContentsMargins(0, 0, 0, 0)
             ai_checkbox.setChecked("Auto Increment" in extras)
+            self.widgets[row]["ai"] = ai_checkbox
             view.setIndexWidget(model.index(row, 5), autoincremento_container)
 
             # Crear combobox de llaves
@@ -189,6 +196,7 @@ class ModificarAtributos(QDialog):
             index_key = combo_key.findText(llave.upper())  # Selecciona la llave actual
             if index_key >= 0:
                 combo_key.setCurrentIndex(index_key)
+            self.widgets[row]["key"] = combo_key
             view.setIndexWidget(model.index(row, 6), combo_key)  # Asigna el combo box a la celda
             
             # Borrar línea
@@ -222,7 +230,7 @@ class ModificarAtributos(QDialog):
         buttons_layout.addWidget(self.aplicar_cambios_btn)
         buttons_layout.addWidget(self.cancel_btn)
         
-        self.aplicar_cambios_btn.clicked.connect(lambda: self.aplicar_cambios(model))
+        self.aplicar_cambios_btn.clicked.connect(lambda: self.aplicar_cambios(model, attributes))
         self.agregar_fila_btn.clicked.connect(self.agregar_fila)
         self.cancel_btn.clicked.connect(self.cancel) 
         
@@ -231,56 +239,46 @@ class ModificarAtributos(QDialog):
     def agregar_fila(self):
         pass    
         
-    def aplicar_cambios(self, model):
-        print("Iniciando aplicar_cambios")
+    def aplicar_cambios(self, model, attributes):
         cambios = []  # Lista para almacenar los cambios
 
         try:
             for row in range(model.rowCount()):
-                # Obtener valores de los QComboBox
-                tipo_index = model.index(row, 1)
-                tipo_combo = self.findChild(QComboBox, f"tipo_combo_{row}")  # Suponiendo que asignas un nombre único
-                tipo_value = tipo_combo.currentText() if tipo_combo else model.data(tipo_index, Qt.ItemDataRole.DisplayRole)
+                # Obtener valores de los widgets usando el diccionario de widgets
+                tipo_value = self.widgets[row]["tipo"].currentText()
+                default_value = self.widgets[row]["default"].currentText()
+                nulo_value = "sí" if self.widgets[row]["nulo"].isChecked() else "no"
+                ai_value = "sí" if self.widgets[row]["ai"].isChecked() else "no"
+                key_value = self.widgets[row]["key"].currentText()
 
-                # Obtener el valor predeterminado
-                default_index = model.index(row, 3)
-                text = QComboBox.currentText()
-                default_combo = self.findChild(QComboBox, f"default_combo_{row}")  # Asignar un nombre único
-                default_value = default_combo.currentText() if default_combo else model.data(default_index, Qt.ItemDataRole.DisplayRole)
-
-                # Obtener el estado de los QCheckBox
-                nulo_checkbox = view.indexWidget(model.index(row, 4)).findChild(QCheckBox)  # QCheckBox para Nulo
-                nulo_value = "Nulo: sí" if nulo_checkbox and nulo_checkbox.isChecked() else "Nulo: no"
-
-                ai_checkbox = view.indexWidget(model.index(row, 5)).findChild(QCheckBox)  # QCheckBox para Auto Increment
-                ai_value = "Auto Increment: sí" if ai_checkbox and ai_checkbox.isChecked() else "Auto Increment: no"
-
-
-                # Obtener el tipo de llave
-                key_index = model.index(row, 6)
-                key_combo = self.findChild(QComboBox, f"key_combo_{row}")  # Asignar un nombre único
-                key_value = key_combo.currentText() if key_combo else model.data(key_index, Qt.ItemDataRole.DisplayRole)
-
-                # Agregar a cambios
+                # Agregar los valores obtenidos a cambios o actualizarlos en el modelo de datos
                 cambios.append({
                     "name": model.data(model.index(row, 0), Qt.ItemDataRole.DisplayRole),
+                    "key_type": key_value,
                     "col_type": tipo_value,
                     "default": default_value,
                     "nulo": nulo_value,
                     "ai": ai_value,
-                    "key_type": key_value
+                    "lenght": model.data(model.index(row, 2), Qt.ItemDataRole.DisplayRole)
                 })
 
-                print(f"Datos en fila {row}: {cambios[-1]}")
-
             # Procesar los cambios
-            #self.generar_sql(cambios)
+            self.generar_sql(cambios, attributes)
         except Exception as e:
-            print(f"Error en aplicar_cambios: {e}")
-
+            QMessageBox.warning("Error", f"Error en aplicar_cambios: {e}")
     
-    def generar_sql(self, cambios):
+    def generar_sql(self, cambios, attributes):
         sql_statements = []
+        
+        print(f"Estos son los atributos originales:\n{attributes}\nEstos son los atributos cambiados:\n{cambios}")
+        
+        """
+        for row, column in cambios:
+            if cambios[row, column] == attributes[row, column]:
+                print("hay cambio")
+                if len(cambios) > len(attributes):
+                    sql_statements.append(f'ALTER TABLE nombre_tabla ADD COLUMN')                
+        
         for accion, atributo in cambios:
             if accion == "ADD":
                 sql_statements.append(f"ALTER TABLE nombre_tabla ADD COLUMN {atributo['name']} {atributo['col_type']} ...")
@@ -288,8 +286,8 @@ class ModificarAtributos(QDialog):
                 sql_statements.append(f"ALTER TABLE nombre_tabla MODIFY COLUMN {atributo['name']} {atributo['col_type']} ...")
             elif accion == "DELETE":
                 sql_statements.append(f"ALTER TABLE nombre_tabla DROP COLUMN {atributo['name']}")
-        
-        return sql_statements
+        """
+        return True
 
     
     def cancel(self):

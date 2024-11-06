@@ -26,13 +26,12 @@ def backup_database(database_name, backup_path):
         # Crear la ruta completa para el archivo de respaldo
         backup_file = os.path.join(backup_path, f"{database_name}-{fecha}.sql")
 
-        # Comando mysqldump con usuario, contraseña y archivo de salida
         backup_command = [
-            mysqldumpPath,                   # Ruta al ejecutable mysqldump
-            "--user=" + user,          # Usuario
-            "--password=" + password,  # Contraseña
-            "--databases",             # Indicar que se van a respaldar bases de datos
-            database_name,             # Nombre de la base de datos
+            mysqldumpPath,
+            "--user=" + user,
+            "--password=" + password,
+            "--databases",
+            database_name,
             "--result-file=" + backup_file  # Archivo de salida
         ]
 
@@ -50,9 +49,7 @@ def backup_database(database_name, backup_path):
 
     except Exception as err:
         print(f"Error: {err}")
-        raise  # Propaga el error para que sea manejado en el método principal
-
-
+        raise
 
 class Respaldar(QWidget):
     def __init__(self):
