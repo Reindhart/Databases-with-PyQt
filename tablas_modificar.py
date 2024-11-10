@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QAbstractItemView, QTableView
                              QHBoxLayout, QWidget, QMessageBox)
 from PyQt6.QtCore import QAbstractTableModel, Qt, QModelIndex, QSize
 from PyQt6.QtGui import QStandardItem, QStandardItemModel, QIcon
-import re
+import re, copy
 
 class ReorderTableModel(QAbstractTableModel):
     def __init__(self, data, parent=None):
@@ -32,17 +32,17 @@ class ReorderTableModel(QAbstractTableModel):
         
         length = ""
         if "Length:" in extras:
-            length = extras.split("Length: ")[-1].split(",")[0]  # Extraer longitud
+            length = extras.split("Length: ")[-1].split(",")[0] 
 
         column_map = {
-            0: name,    # Editable
-            1: col_type,  # Editable
-            2: length,    # Editable
-            3: "",   # Predeterminado, no editable
-            4: "",   # Nulo, no editable
-            5: "",   # A.I, no editable
-            6: key_type,  # Editable
-            7: ""   # Otra columna, puede ser editable o no
+            0: name,
+            1: col_type,
+            2: length,
+            3: "",
+            4: "",
+            5: "",
+            6: key_type,
+            7: ""   # Columna de botón para borrar
         }
 
         if role in (Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole):
@@ -50,17 +50,13 @@ class ReorderTableModel(QAbstractTableModel):
         return None
 
     def setData(self, index, value, role=Qt.ItemDataRole.EditRole):
-        if role == Qt.ItemDataRole.EditRole and index.column() in {0, 1, 2, 6}:  # Solo permitir edición en columnas específicas
+        if role == Qt.ItemDataRole.EditRole and index.column() in {0, 2}:  # Solo permitir edición en columnas específicas
             # Guarda el nuevo valor en el modelo de datos
             if index.column() == 0:
                 self._data[index.row()]["name"] = value
-            elif index.column() == 1:
-                self._data[index.row()]["col_type"] = value
             elif index.column() == 2:
                 # Aquí puedes decidir cómo manejar la longitud
                 self._data[index.row()]["extras"] = f"Length: {value}, ..."
-            elif index.column() == 6:
-                self._data[index.row()]["key_type"] = value
             
             self.dataChanged.emit(index, index, [role])
             return True
@@ -82,13 +78,6 @@ class ReorderTableModel(QAbstractTableModel):
             self.beginMoveRows(QModelIndex(), row_source, row_source, QModelIndex(), row_target)
             self._data.insert(row_target, self._data.pop(row_source))
             self.endMoveRows()
-
-    def relocateRow(self, row_source, row_target) -> None:
-        if row_source != row_target:
-            self.beginMoveRows(QModelIndex(), row_source, row_source, QModelIndex(), row_target)
-            self._data.insert(row_target, self._data.pop(row_source))
-            self.endMoveRows()
-
 
 class ReorderTableView(QTableView):
     """QTableView with drag & drop row reordering support."""
@@ -114,6 +103,14 @@ class ReorderTableView(QTableView):
         if event.source() is not self:
             super().dropEvent(event)
             return
+        
+        selection = self.selectedIndexes()
+        from_index = selection[0].row() if selection else -1
+        to_index = self.indexAt(event.position().toPoint()).row()
+        if 0 <= from_index < self.model().rowCount() and 0 <= to_index < self.model().rowCount() and from_index != to_index:
+            self.model().relocateRow(from_index, to_index)
+            event.accept()
+        super().dropEvent(event)
 
         selection = self.selectedIndexes()
         from_index = selection[0].row() if selection else -1
@@ -126,6 +123,8 @@ class ReorderTableView(QTableView):
 class ModificarAtributos(QDialog):
     """Ventana de modificación de atributos de la tabla con reordenamiento de filas."""
     def __init__(self, attributes):
+
+        self.attributes_originals = copy.deepcopy(attributes)
         super().__init__()
         self.setWindowTitle("Modificar Atributos")
         self.resize(850, 300)
@@ -230,7 +229,7 @@ class ModificarAtributos(QDialog):
         buttons_layout.addWidget(self.aplicar_cambios_btn)
         buttons_layout.addWidget(self.cancel_btn)
         
-        self.aplicar_cambios_btn.clicked.connect(lambda: self.aplicar_cambios(model, attributes))
+        self.aplicar_cambios_btn.clicked.connect(lambda: self.aplicar_cambios(model, self.attributes_originals))
         self.agregar_fila_btn.clicked.connect(self.agregar_fila)
         self.cancel_btn.clicked.connect(self.cancel) 
         
@@ -257,9 +256,9 @@ class ModificarAtributos(QDialog):
                     "key_type": key_value,
                     "col_type": tipo_value,
                     "default": default_value,
-                    "nulo": nulo_value,
+                    "Nulo": nulo_value,
                     "ai": ai_value,
-                    "lenght": model.data(model.index(row, 2), Qt.ItemDataRole.DisplayRole)
+                    "Lenght": model.data(model.index(row, 2), Qt.ItemDataRole.DisplayRole)
                 })
 
             # Procesar los cambios
@@ -269,7 +268,8 @@ class ModificarAtributos(QDialog):
     
     def generar_sql(self, cambios, attributes):
         sql_statements = []
-        
+        print(id(attributes))
+        print(id(cambios))
         print(f"Estos son los atributos originales:\n{attributes}\nEstos son los atributos cambiados:\n{cambios}")
         
         """
